@@ -1,0 +1,12 @@
+# Proxmox API configuration
+proxmox_url      = "https://<PROXMOX-IP>:8006/api2/json"
+proxmox_token    = "root@pam!terraform=<YOUR-API-TOKEN-SECRET>"
+proxmox_insecure = true
+
+# Node 1 configuration
+proxmox_node1      = "<NODE1-NAME>"
+proxmox_host_node1 = "<NODE1-IP>"
+
+# Node 2 configuration - Planned (when multi-node support is added)
+# proxmox_node2      = "<NODE2-NAME>"
+# proxmox_host_node2 = "<NODE2-IP>"
