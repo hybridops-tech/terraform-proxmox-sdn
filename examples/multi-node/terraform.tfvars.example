@@ -10,3 +10,4 @@ proxmox_host_node1 = "<NODE1-IP>"
 # Node 2 configuration - Planned (when multi-node support is added)
 # proxmox_node2      = "<NODE2-NAME>"
 # proxmox_host_node2 = "<NODE2-IP>"
+
