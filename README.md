@@ -388,7 +388,7 @@ Key points:
 - SDN zone and VNet IDs must follow **Proxmox SDN naming rules** (≤ 8 chars, no dashes).
 - After `destroy`, VNet bridge interfaces may persist until networking is reloaded (`ifreload -a` / `pvesh set /cluster/sdn`).
 - `dnsmasq` is the only supported DHCP engine.
-- Proxmox UI may show VNet status errors after apply (networks still work). See `scripts/install-sdn-auto-healing.sh` if needed.
+- Proxmox UI may show VNet status errors after apply (networks still work). See [`scripts/install-sdn-auto-healing.sh`](https://github.com/hybridops-studio/terraform-proxmox-sdn/blob/main/scripts/install-sdn-auto-healing.sh).
 
 ---
 
