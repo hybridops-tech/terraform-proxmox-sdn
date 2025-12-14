@@ -10,11 +10,14 @@ rm -f /etc/dnsmasq.d/sdn-dhcp.conf
 rm -f /etc/systemd/system/dnsmasq.service.d/sdn-wait.conf
 rmdir /etc/systemd/system/dnsmasq.service.d 2>/dev/null || true
 
-for vnet in vnetmgmt vnetobs vnetdev vnetstag vnetprod vnetlab; do
-  if ip link show $vnet 2>/dev/null; then
-    ip addr flush dev $vnet 2>/dev/null || true
-  fi
+for vnet in vnetdev vnetlab vnetmgmt vnetobs vnetprod vnetstag; do
+  ip addr flush dev $vnet 2>/dev/null || true
+  ip link set "$vnet" down 2>/dev/null || true
+  ip link delete "$vnet" 2>/dev/null || true
 done
+
+ifreload -a
+pvesh set /cluster/sdn
 
 systemctl daemon-reload
 systemctl restart dnsmasq
