@@ -61,11 +61,35 @@ resource "null_resource" "dhcp_setup" {
   }
 
   provisioner "local-exec" {
-    command = "bash ${path.module}/scripts/setup-dhcp.sh"
+    command = <<-EOT
+      RETRY=0
+      MAX_RETRIES=3
+      
+      until [ $RETRY -ge $MAX_RETRIES ]; do
+        echo "Attempt $((RETRY+1))/$MAX_RETRIES: Running DHCP setup"
+        
+        if timeout 120 bash ${path.module}/scripts/setup-dhcp.sh; then
+          echo "DHCP setup succeeded"
+          exit 0
+        else
+          RETRY=$((RETRY+1))
+          if [ $RETRY -lt $MAX_RETRIES ]; then
+            echo "DHCP setup failed, retrying in 5 seconds"
+            sleep 5
+          fi
+        fi
+      done
+      
+      echo "DHCP setup failed after $MAX_RETRIES attempts"
+      exit 1
+    EOT
+
     environment = {
       PROXMOX_HOST = var.proxmox_host
       VNETS_JSON   = jsonencode(var.vnets)
     }
+
+    on_failure = fail
   }
 
   provisioner "local-exec" {

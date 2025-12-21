@@ -153,3 +153,5 @@ REMOTE_SCRIPT
 
 echo ""
 echo "✓ DHCP setup complete!"
+
+exit 0exit 0
