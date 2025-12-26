@@ -1,10 +1,13 @@
+# purpose: Output values for Proxmox SDN VLAN zone, VNets, and subnet DHCP configuration
+# maintainer: HybridOps.Studio
+
 output "zone_name" {
-  description = "SDN zone name"
+  description = "SDN zone name."
   value       = proxmox_virtual_environment_sdn_zone_vlan.zone.id
 }
 
 output "vnets" {
-  description = "Created VNets"
+  description = "Created SDN VNets."
   value = {
     for k, v in proxmox_virtual_environment_sdn_vnet.vnet : k => {
       id      = v.id
@@ -24,7 +27,7 @@ locals {
 }
 
 output "subnets" {
-  description = "Created subnets with DHCP configuration"
+  description = "Created SDN subnets with DHCP configuration."
   value = {
     for key, subnet in proxmox_virtual_environment_sdn_subnet.subnet : key => {
       id      = subnet.id

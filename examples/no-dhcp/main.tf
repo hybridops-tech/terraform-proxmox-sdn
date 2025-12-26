@@ -22,8 +22,9 @@ module "sdn" {
   proxmox_node = var.proxmox_node
   proxmox_host = var.proxmox_host
 
+  # Static IP network, no DHCP
   vnets = {
-    vstatic = { # <= 8 chars, OK as VNet ID
+    vstatic = { # <= 8 chars, valid VNet ID
       vlan_id     = 100
       description = "Static IP Network - No DHCP"
 
@@ -31,7 +32,6 @@ module "sdn" {
         static = {
           cidr         = "10.100.0.0/24"
           gateway      = "10.100.0.1"
-          vnet         = "vstatic" # must match the key above
           dhcp_enabled = false
         }
       }
@@ -41,18 +41,4 @@ module "sdn" {
   proxmox_url      = var.proxmox_url
   proxmox_token    = var.proxmox_token
   proxmox_insecure = var.proxmox_insecure
-}
-output "zone_name" {
-  description = "SDN zone name"
-  value       = module.sdn.zone_name
-}
-
-output "vnets" {
-  description = "Created VNets"
-  value       = module.sdn.vnets
-}
-
-output "subnets" {
-  description = "Created subnets with DHCP configuration"
-  value       = module.sdn.subnets
 }

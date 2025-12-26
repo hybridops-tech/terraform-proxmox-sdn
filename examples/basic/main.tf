@@ -16,13 +16,16 @@ provider "proxmox" {
 }
 
 module "sdn" {
+  # For the module repo itself, source is the root.
   source = "../.."
 
   # SDN zone ID must be <= 8 chars, lowercase, no dashes
-  zone_name = "hybzone"
-
+  zone_name    = "hybzone"
   proxmox_node = var.proxmox_node
   proxmox_host = var.proxmox_host
+
+  dns_domain = "hybridops.local"
+  dns_lease  = "24h"
 
   vnets = {
     vnetmgmt = {
@@ -33,10 +36,9 @@ module "sdn" {
         mgmt = {
           cidr             = "10.10.0.0/24"
           gateway          = "10.10.0.1"
-          vnet             = "vnetmgmt"
           dhcp_enabled     = true
-          dhcp_range_start = "10.10.0.100"
-          dhcp_range_end   = "10.10.0.200"
+          dhcp_range_start = "10.10.0.120"
+          dhcp_range_end   = "10.10.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -46,18 +48,4 @@ module "sdn" {
   proxmox_url      = var.proxmox_url
   proxmox_token    = var.proxmox_token
   proxmox_insecure = var.proxmox_insecure
-}
-output "zone_name" {
-  description = "SDN zone name"
-  value       = module.sdn.zone_name
-}
-
-output "vnets" {
-  description = "Created VNets"
-  value       = module.sdn.vnets
-}
-
-output "subnets" {
-  description = "Created subnets with DHCP configuration"
-  value       = module.sdn.subnets
 }

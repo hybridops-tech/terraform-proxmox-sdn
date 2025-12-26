@@ -20,10 +20,12 @@ module "sdn" {
   source = "../.."
 
   # SDN zone ID must be <= 8 chars, lowercase, no dashes
-  zone_name = "hybzone"
-
+  zone_name    = "hybzone"
   proxmox_node = var.proxmox_node
   proxmox_host = var.proxmox_host
+
+  dns_domain = "hybridops.local"
+  dns_lease  = "24h"
 
   vnets = {
     vnetmgmt = {
@@ -33,10 +35,9 @@ module "sdn" {
         mgmt = {
           cidr             = "10.10.0.0/24"
           gateway          = "10.10.0.1"
-          vnet             = "vnetmgmt"
           dhcp_enabled     = true
-          dhcp_range_start = "10.10.0.100"
-          dhcp_range_end   = "10.10.0.200"
+          dhcp_range_start = "10.10.0.120"
+          dhcp_range_end   = "10.10.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -49,10 +50,9 @@ module "sdn" {
         obs = {
           cidr             = "10.11.0.0/24"
           gateway          = "10.11.0.1"
-          vnet             = "vnetobs"
           dhcp_enabled     = true
-          dhcp_range_start = "10.11.0.100"
-          dhcp_range_end   = "10.11.0.200"
+          dhcp_range_start = "10.11.0.120"
+          dhcp_range_end   = "10.11.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -65,10 +65,9 @@ module "sdn" {
         dev = {
           cidr             = "10.20.0.0/24"
           gateway          = "10.20.0.1"
-          vnet             = "vnetdev"
           dhcp_enabled     = true
-          dhcp_range_start = "10.20.0.100"
-          dhcp_range_end   = "10.20.0.200"
+          dhcp_range_start = "10.20.0.120"
+          dhcp_range_end   = "10.20.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -81,10 +80,9 @@ module "sdn" {
         stag = {
           cidr             = "10.30.0.0/24"
           gateway          = "10.30.0.1"
-          vnet             = "vnetstag"
           dhcp_enabled     = true
-          dhcp_range_start = "10.30.0.100"
-          dhcp_range_end   = "10.30.0.200"
+          dhcp_range_start = "10.30.0.120"
+          dhcp_range_end   = "10.30.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -97,10 +95,9 @@ module "sdn" {
         prod = {
           cidr             = "10.40.0.0/24"
           gateway          = "10.40.0.1"
-          vnet             = "vnetprod"
           dhcp_enabled     = true
-          dhcp_range_start = "10.40.0.100"
-          dhcp_range_end   = "10.40.0.200"
+          dhcp_range_start = "10.40.0.120"
+          dhcp_range_end   = "10.40.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -113,10 +110,9 @@ module "sdn" {
         lab = {
           cidr             = "10.50.0.0/24"
           gateway          = "10.50.0.1"
-          vnet             = "vnetlab"
           dhcp_enabled     = true
-          dhcp_range_start = "10.50.0.100"
-          dhcp_range_end   = "10.50.0.200"
+          dhcp_range_start = "10.50.0.120"
+          dhcp_range_end   = "10.50.0.220"
           dhcp_dns_server  = "8.8.8.8"
         }
       }
@@ -127,17 +123,4 @@ module "sdn" {
   proxmox_token    = var.proxmox_token
   proxmox_insecure = var.proxmox_insecure
 }
-output "zone_name" {
-  description = "SDN zone name"
-  value       = module.sdn.zone_name
-}
 
-output "vnets" {
-  description = "Created VNets"
-  value       = module.sdn.vnets
-}
-
-output "subnets" {
-  description = "Created subnets with DHCP configuration"
-  value       = module.sdn.subnets
-}

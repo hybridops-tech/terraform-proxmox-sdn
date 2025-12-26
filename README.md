@@ -36,7 +36,7 @@ provider "proxmox" {
 }
 
 module "sdn" {
-  source  = "hybridops-studio/proxmox-sdn/proxmox"
+  source  = "hybridops-studio/sdn/proxmox"
   version = "~> 0.1.1"
 
   # SDN zone ID must follow Proxmox SDN rules (<= 8 chars, no dashes)
@@ -167,7 +167,6 @@ vnets = {
       subnet_name = {
         cidr             = string
         gateway          = string
-        vnet             = string   # usually matches the VNet key
         dhcp_enabled     = bool
         dhcp_range_start = string   # required if dhcp_enabled = true
         dhcp_range_end   = string   # required if dhcp_enabled = true
@@ -209,8 +208,6 @@ terraform output subnets
 ```hcl
 subnets = {
   "vnetmgmt-mgmt" = {
-    id               = "hybzone-10.10.0.0-24"
-    vnet             = "vnetmgmt"
     cidr             = "10.10.0.0/24"
     gateway          = "10.10.0.1"
     dhcp_enabled     = true
@@ -333,7 +330,6 @@ module "sdn_cluster" {
         mgmt = {
           cidr             = "10.200.0.0/24"
           gateway          = "10.200.0.1"
-          vnet             = "vclst01m"
           dhcp_enabled     = true
           dhcp_range_start = "10.200.0.100"
           dhcp_range_end   = "10.200.0.150"
@@ -365,7 +361,7 @@ A prototype of this layout is maintained under:
 The module relies on a helper script to configure `dnsmasq` on the Proxmox node:
 
 - Renders DHCP configuration for all `dhcp_enabled` subnets from the `vnets` map.
-- Writes config to `/etc/dnsmasq.d/sdn-dhcp.conf` (default).
+- Writes one dnsmasq configuration file per DHCP-enabled subnet under /etc/dnsmasq.d/, and manages a corresponding dnsmasq@<service>.service unit.
 - Restarts or reloads `dnsmasq`.
 - Triggers a Proxmox SDN reload to clear UI warnings.
 
