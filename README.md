@@ -1,14 +1,19 @@
+
 # terraform-proxmox-sdn
 
 [![Terraform Registry](https://img.shields.io/badge/terraform_registry-hybridops--studio%2Fsdn%2Fproxmox-623CE4.svg)](https://registry.terraform.io/modules/hybridops-studio/sdn/proxmox)
 
-Terraform module for managing **Proxmox SDN** (Software-Defined Networking) with automated **DHCP via dnsmasq**.
+Terraform module for managing **Proxmox SDN** (Software-Defined Networking) with optional **host L3**, **SNAT**, and **per-subnet DHCP via dnsmasq**.
 
-It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x**, and can configure dnsmasq on the Proxmox node to provide per-subnet DHCP pools. Suitable for both **homelabs** and small **production-style** environments.
+It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and can:
 
-The module can be used:
+- Configure **gateway IPs** on VNet bridge interfaces (host L3).
+- Add **SNAT / masquerade** rules per subnet.
+- Provision **dnsmasq DHCP** pools per subnet.
 
-- As **standalone Terraform** in a small project or lab.
+Designed for **production-ready Proxmox platforms**, from advanced labs to full **production-style** environments, and usable:
+
+- As **standalone Terraform** in a focused project, advanced lab, or production stack.
 - As part of a **Terragrunt / monorepo stack** (for example, within the HybridOps.Studio `live-v1` layout).
 
 ---
@@ -44,6 +49,16 @@ module "sdn" {
   proxmox_node = var.proxmox_node
   proxmox_host = var.proxmox_host
 
+  # Optional host L3 and SNAT
+  enable_host_l3   = true
+  enable_snat      = true
+  uplink_interface = "vmbr0"
+
+  # Optional DHCP (requires enable_host_l3 = true)
+  enable_dhcp = true
+  dns_domain  = "hybridops.local"
+  dns_lease   = "24h"
+
   vnets = {
     vnetmgmt = {
       vlan_id     = 10
@@ -51,9 +66,12 @@ module "sdn" {
 
       subnets = {
         mgmt = {
-          cidr             = "10.10.0.0/24"
-          gateway          = "10.10.0.1"
-          vnet             = "vnetmgmt"
+          cidr    = "10.10.0.0/24"
+          gateway = "10.10.0.1"
+
+          # DHCP can be opted in either by:
+          # - dhcp_enabled = true  + ranges, or
+          # - omitting dhcp_enabled and just setting ranges.
           dhcp_enabled     = true
           dhcp_range_start = "10.10.0.100"
           dhcp_range_end   = "10.10.0.200"
@@ -62,13 +80,10 @@ module "sdn" {
       }
     }
   }
-
-  dns_domain = "hybridops.local"
-  dns_lease  = "24h"
 }
 ```
 
-Example variables:
+Example variables (API + node details):
 
 ```hcl
 # Proxmox API configuration
@@ -96,12 +111,12 @@ module "sdn" {
 In Terragrunt, this is typically wrapped via `terraform { source = "..." }` and `inputs = { ... }` in a stack directory such as:
 
 ```text
-platform/infra/terraform/live-v1/onprem/proxmox/core/00-foundation/network-sdn/
+hybridops-platform/infra/terraform/live-v1/onprem/proxmox/core/00-foundation/network-sdn/
 ```
 
 For a full Terragrunt-based walkthrough, see the how-to:
 
-- [How-to: Proxmox SDN with Terraform](https://docs.hybridops.studio/howtos/network/proxmox-sdn-terraform/)
+- How-to: Proxmox SDN with Terraform (docs URL TBD)
 
 ---
 
@@ -109,19 +124,20 @@ For a full Terragrunt-based walkthrough, see the how-to:
 
 - Creates a VLAN-backed **SDN zone** on a Proxmox bridge.
 - Manages **VNets** and **subnets** via a single `vnets` map.
-- Assigns **gateway IPs** on VNet bridge interfaces.
-- Generates `dnsmasq` **DHCP pools** per subnet and reloads the service.
+- Optional **host L3**: assigns gateway IPs on VNet bridge interfaces.
+- Optional **SNAT**: per-subnet masquerade to an uplink interface.
+- Optional **dnsmasq DHCP**: per-subnet DHCP pools, driven from Terraform state.
 - Designed to be **idempotent** and safe to re-apply.
 
-Common environment layout:
+Typical reference layout (six VLANs):
 
-- Tenant environments such as `mgmt`, `obs`, `dev`, `staging`, `prod`, `lab`.
-- Per-subnet structure (for `/24`):
-  - `.1` – gateway (VNet bridge)
-  - `.2–.9` – infrastructure services
-  - `.10–.99` – static IPs (IPAM / NetBox)
-  - `.100–.200` – DHCP pool
-  - `.201–.254` – reserved
+- Environments: `mgmt`, `obs`, `dev`, `staging`, `prod`, `lab`.
+- For `/24` subnets:
+  - `.1` – gateway (VNet bridge).
+  - `.2–.9` – infrastructure services.
+  - `.10–.119` – static IPs (IPAM / NetBox).
+  - `.120–.220` – DHCP pool.
+  - `.221–.254` – reserved.
 
 ---
 
@@ -129,10 +145,10 @@ Common environment layout:
 
 - Proxmox VE **8.x** with SDN enabled.
 - VLAN-aware bridge (for example `vmbr0`).
-- `dnsmasq` installed on the Proxmox node.
+- `dnsmasq` installed on the Proxmox node (if using DHCP).
 - Terraform **>= 1.5.0**.
 - Provider **bpg/proxmox >= 0.50.0**.
-- SSH access from the runner to the Proxmox node for DHCP configuration.
+- SSH access from the runner to the Proxmox node for host-side configuration (L3 / SNAT / DHCP).
 
 ---
 
@@ -140,19 +156,26 @@ Common environment layout:
 
 ### Core inputs
 
-| Name           | Type   | Required | Description                                                         |
-|----------------|--------|----------|---------------------------------------------------------------------|
-| `zone_name`    | string | yes      | SDN zone ID (≤ 8 chars, lowercase, no dashes – Proxmox SDN rules). |
-| `proxmox_node` | string | yes      | Proxmox node name (for example `pve` or `hybridhub`).               |
-| `proxmox_host` | string | yes      | Proxmox host (IP or DNS) used to reach dnsmasq via SSH.             |
-| `vnets`        | map    | yes      | Map of VNets and subnets (see structure below).                     |
+| Name           | Type   | Required | Description                                                                 |
+|----------------|--------|----------|-----------------------------------------------------------------------------|
+| `zone_name`    | string | yes      | SDN zone ID (≤ 8 chars, lowercase, no dashes – Proxmox SDN rules).         |
+| `zone_bridge`  | string | no       | Proxmox bridge to attach the SDN zone to (default: `vmbr0`).               |
+| `proxmox_node` | string | yes      | Proxmox node name (for example `pve` or `hybridhub`).                       |
+| `proxmox_host` | string | yes      | Proxmox host (IP or DNS) used over SSH for L3/SNAT/DHCP scripts.           |
+| `vnets`        | map    | yes      | Map of VNets and subnets (see structure below).                             |
 
-### Optional inputs
+### Host L3 / SNAT / DHCP toggles
 
-| Name         | Type   | Default             | Description                        |
-|--------------|--------|---------------------|------------------------------------|
-| `dns_domain` | string | `"hybridops.local"` | DNS domain used in dnsmasq config. |
-| `dns_lease`  | string | `"24h"`             | DHCP lease time.                   |
+| Name               | Type   | Default           | Description                                                                 |
+|--------------------|--------|-------------------|-----------------------------------------------------------------------------|
+| `enable_host_l3`   | bool   | `true`            | Configure VNet gateway IPs on the host (required for SNAT and DHCP).       |
+| `enable_snat`      | bool   | `true`            | Enable SNAT/masquerade for SDN subnets via `uplink_interface`.             |
+| `uplink_interface` | string | `"vmbr0"`         | Uplink interface used for SNAT (typically the WAN/LAN bridge).             |
+| `enable_dhcp`      | bool   | `false`           | Enable dnsmasq DHCP provisioning (requires `enable_host_l3 = true`).       |
+| `dns_domain`       | string | `"hybridops.local"` | DNS domain used in dnsmasq config.                                       |
+| `dns_lease`        | string | `"24h"`           | DHCP lease time (`<number><s|m|h|d>`, e.g. `24h`).                          |
+
+> The module enforces that `enable_dhcp = true` requires `enable_host_l3 = true`, so dnsmasq can bind to VNet interfaces safely.
 
 ### VNet structure
 
@@ -163,14 +186,26 @@ vnets = {
   vnetmgmt = {
     vlan_id     = number
     description = string
+
     subnets = {
       subnet_name = {
-        cidr             = string
-        gateway          = string
-        dhcp_enabled     = bool
-        dhcp_range_start = string   # required if dhcp_enabled = true
-        dhcp_range_end   = string   # required if dhcp_enabled = true
-        dhcp_dns_server  = string
+        cidr    = string
+        gateway = string
+
+        # DHCP is optional and can be expressed in two ways:
+        # 1) Explicit flag + ranges:
+        #    dhcp_enabled     = true
+        #    dhcp_range_start = "10.10.0.120"
+        #    dhcp_range_end   = "10.10.0.220"
+        # 2) Implicit (no flag, just ranges):
+        #    dhcp_range_start = "10.10.0.120"
+        #    dhcp_range_end   = "10.10.0.220"
+        #
+        # If no flag and no ranges are provided, the subnet is L3-only (no DHCP).
+        dhcp_enabled     = optional(bool)
+        dhcp_range_start = optional(string)
+        dhcp_range_end   = optional(string)
+        dhcp_dns_server  = optional(string)
       }
     }
   }
@@ -179,19 +214,24 @@ vnets = {
 }
 ```
 
+Validation rules:
+
+- If `dhcp_enabled = true`, both `dhcp_range_start` and `dhcp_range_end` must be set for that subnet.
+- If `enable_dhcp = false`, DHCP configuration is ignored, but host L3/SNAT can still be enabled.
+
 ---
 
 ## Outputs
 
-| Name       | Type   | Description                                                                                  |
-|------------|--------|----------------------------------------------------------------------------------------------|
-| `zone_name` | string | SDN zone name (Proxmox SDN zone ID).                                                         |
-| `vnets`     | map    | Map of VNet keys to objects with `id`, `zone`, and `vlan_id`.                                |
-| `subnets`   | map    | Map of subnet keys (`<vnet>-<subnet>`) to objects with CIDR, gateway, and DHCP configuration. |
+| Name        | Type   | Description                                                                 |
+|-------------|--------|-----------------------------------------------------------------------------|
+| `zone_name` | string | SDN zone name (Proxmox SDN zone ID).                                       |
+| `vnets`     | map    | Map of VNet keys to objects with `id`, `zone`, and `vlan_id`.              |
+| `subnets`   | map    | Map of subnet keys (`<vnet>-<subnet>`) to objects with CIDR, gateway, and DHCP metadata. |
 
 ### Example: inspecting outputs
 
-After `terraform apply`, you can inspect outputs from any of the examples:
+After `terraform apply`:
 
 ```bash
 terraform output zone_name
@@ -199,71 +239,53 @@ terraform output vnets
 terraform output subnets
 ```
 
-Example (from the `basic` example):
-
-```bash
-terraform output subnets
-```
+Example `subnets` output snippet:
 
 ```hcl
 subnets = {
   "vnetmgmt-mgmt" = {
+    id               = "..."
+    vnet             = "vnetmgmt"
     cidr             = "10.10.0.0/24"
     gateway          = "10.10.0.1"
     dhcp_enabled     = true
-    dhcp_range_start = "10.10.0.100"
-    dhcp_range_end   = "10.10.0.200"
+    dhcp_range_start = "10.10.0.120"
+    dhcp_range_end   = "10.10.0.220"
     dhcp_dns_server  = "8.8.8.8"
   }
 }
 ```
 
-These can be consumed by other modules (for example VM modules that attach NICs to specific VNets).
+Other modules (for example VM modules) can consume these to attach NICs or derive IP ranges.
 
 ---
 
-## Design notes & Proxmox SDN constraints
+## DHCP behaviour
 
-### SDN IDs (zones and VNets)
+- DHCP is provided by **dnsmasq** on the Proxmox node, driven from the `vnets` map.
+- Only subnets that appear in the effective **DHCP set** are rendered:
+  - `dhcp_enabled = true` → always included (ranges required).
+  - `dhcp_enabled` omitted → included only if both `dhcp_range_start` and `dhcp_range_end` are set.
+- When `enable_dhcp = false`, no dnsmasq configuration is rendered and no DHCP systemd units are managed.
+- When `enable_host_l3 = true` but `enable_dhcp = false`, you still get:
+  - VNet bridge interfaces with gateway IPs.
+  - Optional SNAT rules, so subnets can reach the internet with static IPs only.
 
-Proxmox SDN enforces strict ID rules:
+This makes it easy to:
 
-- Max length: 8 characters
-- Lowercase, no spaces, no dashes
-- Must be unique per SDN object type
-
-This module assumes:
-
-- `zone_name` is already a valid SDN ID (e.g. `hybzone`, `clust01`).
-- VNet keys in `vnets` are also valid IDs (e.g. `vnetmgmt`, `vclst01m`).
-
-If you violate these constraints, Proxmox will reject the API call and Terraform will fail with a 4xx/5xx error.
-
-### DHCP behaviour
-
-- DHCP is driven by a dnsmasq helper script on the Proxmox node.
-- Only subnets with `dhcp_enabled = true` are rendered into `/etc/dnsmasq.d/sdn-dhcp.conf`.
-- `terraform destroy` removes SDN objects but Proxmox may leave bridge interfaces in the kernel until networking is reloaded (see Known issues).
-
-### Apply vs destroy
-
-This module is designed for:
-
-- Iterative `apply` to evolve SDN configuration safely.
-- Occasional `destroy` in lab / demo environments only.
-
-For production, prefer `apply`-driven changes over full destroy/recreate workflows.
+- Start with **L3 + SNAT only** (no DHCP).
+- Later turn on `enable_dhcp = true` and add DHCP ranges to selected subnets.
 
 ---
 
 ## Examples
 
-The GitHub repository includes ready-to-run examples under `examples/`:
+The GitHub repository can include ready-to-run examples under `examples/`:
 
 | Example              | Description                                      |
 |----------------------|--------------------------------------------------|
-| `basic`              | Single VNet with DHCP (minimal config).          |
-| `homelab-six-vlans`  | Six-VLAN homelab (mgmt/obs/dev/staging/prod/lab).|
+| `basic`              | Single VNet with DHCP (minimal config).         |
+| `homelab-six-vlans`  | Six‑VLAN reference design (mgmt/obs/dev/staging/prod/lab).|
 | `no-dhcp`            | Static IP network without DHCP.                  |
 | `multi-node`         | Planned multi-node pattern (current module is single-node). |
 
@@ -276,115 +298,14 @@ terraform init
 terraform apply
 ```
 
-The [How-to: Proxmox SDN with Terraform](https://docs.hybridops.studio/howtos/network/proxmox-sdn-terraform/) provides a higher-level narrative for both:
-
-- A quick standalone Terraform project.
-- A Terragrunt-based SDN stack inside the larger hybridops-platform repository.
-
----
-
-## Multi-node roadmap
-
-> **Status:** Design/roadmap – not yet supported in `v0.1.x`.  
-> The goal is to reuse the same module to manage a **shared SDN zone** that spans multiple Proxmox nodes.
-
-### Target design
-
-The planned multi-node model looks like:
-
-- **One SDN zone** (for example `clust01`) shared across all nodes.
-- **Per-cluster VNets** with SDN-safe identifiers (≤ 8 chars, no dashes), for example:
-  - `vclst01m` – cluster management
-  - `vclst01d` – cluster data
-- A single dnsmasq configuration that serves DHCP for all cluster VLANs.
-
-In Terraform module terms, this would be driven by:
-
-- `zone_name` – shared across all nodes.
-- A future `nodes` input – list of node names (`["pve1", "pve2", "pve3"]`).
-- A shared `vnets` map (same structure as in the single-node examples).
-
-### Example scaffold (subject to change)
-
-> **Do not use this in production yet** – this is a design sketch for a future `>= 0.2.0` release.
-
-```hcl
-module "sdn_cluster" {
-  source  = "hybridops-studio/proxmox-sdn/proxmox"
-  version = "~> 0.2.0"
-
-  # Shared SDN zone across nodes (≤ 8 chars, no dashes)
-  zone_name = "clust01"
-
-  # Planned: list of nodes instead of a single node
-  nodes = [
-    "pve1",
-    "pve2",
-  ]
-
-  vnets = {
-    vclst01m = {
-      vlan_id     = 200
-      description = "Cluster management network"
-      subnets = {
-        mgmt = {
-          cidr             = "10.200.0.0/24"
-          gateway          = "10.200.0.1"
-          dhcp_enabled     = true
-          dhcp_range_start = "10.200.0.100"
-          dhcp_range_end   = "10.200.0.150"
-          dhcp_dns_server  = "8.8.8.8"
-        }
-      }
-    }
-
-    # vclst01d, vclst01s, etc.
-  }
-
-  dns_domain = "hybridops.local"
-  dns_lease  = "24h"
-
-  proxmox_url      = var.proxmox_url
-  proxmox_token    = var.proxmox_token
-  proxmox_insecure = var.proxmox_insecure
-}
-```
-
-A prototype of this layout is maintained under:
-
-- `examples/multi-node/` in the module repository (experimental, subject to change).
-
----
-
-## DHCP helper script
-
-The module relies on a helper script to configure `dnsmasq` on the Proxmox node:
-
-- Renders DHCP configuration for all `dhcp_enabled` subnets from the `vnets` map.
-- Writes one dnsmasq configuration file per DHCP-enabled subnet under /etc/dnsmasq.d/, and manages a corresponding dnsmasq@<service>.service unit.
-- Restarts or reloads `dnsmasq`.
-- Triggers a Proxmox SDN reload to clear UI warnings.
-
-Reference implementation:
-
-- `scripts/setup-dhcp.sh`
-
-This is invoked via a `null_resource` + `local-exec` provisioner that SSHs to `proxmox_host`.
-
 ---
 
 ## Known limitations
 
-See:
-
-- [`KNOWN-ISSUES-terraform-proxmox-sdn.md`](./KNOWN-ISSUES-terraform-proxmox-sdn.md) (in the GitHub repo).
-
-Key points:
-
 - SDN zone and VNet IDs must follow **Proxmox SDN naming rules** (≤ 8 chars, no dashes).
 - After `destroy`, VNet bridge interfaces may persist until networking is reloaded (`ifreload -a` / `pvesh set /cluster/sdn`).
 - `dnsmasq` is the only supported DHCP engine.
-- Proxmox UI may show VNet status errors after apply (networks still work). See [`scripts/install-sdn-auto-healing.sh`](https://github.com/hybridops-studio/terraform-proxmox-sdn/blob/main/scripts/install-sdn-auto-healing.sh).
+- Proxmox UI may show SDN/DHCP status warnings in some edge cases, even when traffic flows correctly. A helper script such as `install-sdn-auto-healing.sh` can be used to auto-heal/quiet known Proxmox SDN quirks.
 
 ---
 
@@ -402,7 +323,6 @@ If you want the broader architecture and narrative:
 
 These links are optional context for Registry users but provide a full picture when browsing on GitHub or the docs site.
 
----
 
 ## License
 

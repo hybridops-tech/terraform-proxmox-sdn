@@ -35,7 +35,18 @@ output "subnets" {
       cidr    = subnet.cidr
       gateway = subnet.gateway
 
-      dhcp_enabled     = try(local.subnet_config[key].dhcp_enabled, false)
+      dhcp_enabled = (
+        var.enable_host_l3 && var.enable_dhcp &&
+        (
+          try(local.subnet_config[key].dhcp_enabled, null) == true ||
+          (
+            try(local.subnet_config[key].dhcp_enabled, null) == null &&
+            try(local.subnet_config[key].dhcp_range_start, null) != null &&
+            try(local.subnet_config[key].dhcp_range_end, null) != null
+          )
+        )
+      )
+
       dhcp_range_start = try(local.subnet_config[key].dhcp_range_start, null)
       dhcp_range_end   = try(local.subnet_config[key].dhcp_range_end, null)
       dhcp_dns_server  = try(local.subnet_config[key].dhcp_dns_server, null)
