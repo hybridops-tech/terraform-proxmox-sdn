@@ -1,6 +1,6 @@
 # terraform-proxmox-sdn
 
-[![Terraform Registry](https://img.shields.io/badge/terraform_registry-hybridops--studio%2Fsdn%2Fproxmox-623CE4.svg)](https://registry.terraform.io/modules/hybridops-studio/sdn/proxmox)
+[![Terraform Registry](https://img.shields.io/badge/terraform_registry-hybridops--tech%2Fsdn%2Fproxmox-623CE4.svg)](https://registry.terraform.io/modules/hybridops-tech/sdn/proxmox)
 
 Terraform module for managing **Proxmox SDN** (Software-Defined Networking) with optional **host L3**, **SNAT**, and **per-subnet DHCP via dnsmasq**.
 
@@ -10,6 +10,15 @@ It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and 
 - Add **SNAT / masquerade** rules per subnet.
 - Provision **dnsmasq DHCP** pools per subnet.
 - Emit a **NetBox-ready IPAM export payload** (prefixes + DHCP metadata).
+
+> **Namespace Migration Notice**
+>
+> This module is now officially published under `hybridops-tech/sdn/proxmox`.
+>
+> The previous namespace `hybridops-studio/sdn/proxmox` remains available for
+> compatibility but will not receive future releases.
+>
+> Please update your Terraform source reference.
 
 Designed for **production-ready Proxmox platforms**, from advanced labs to full **production-style** environments, and usable:
 
@@ -41,8 +50,8 @@ provider "proxmox" {
 }
 
 module "sdn" {
-  source  = "hybridops-studio/sdn/proxmox"
-  version = "~> 0.1.1"
+  source  = "hybridops-tech/sdn/proxmox"
+  version = "~> 0.1.3"
 
   # SDN zone ID must follow Proxmox SDN rules (<= 8 chars, no dashes)
   zone_name    = "hybzone"
@@ -102,9 +111,9 @@ For monorepos or Terragrunt-based stacks, you can pin a specific tag from GitHub
 
 ```hcl
 module "sdn" {
-  source = "github.com/hybridops-studio/terraform-proxmox-sdn//."
+  source = "github.com/hybridops-tech/terraform-proxmox-sdn//."
   # Optionally pin a tag:
-  # source = "github.com/hybridops-studio/terraform-proxmox-sdn//.?ref=v0.1.1"
+  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.3"
 }
 ```
 
@@ -302,7 +311,7 @@ See the [HybridOps.Studio licensing overview](https://docs.hybridops.studio/brie
 
 Contributions are welcome via GitHub:
 
-- [Repository](https://github.com/hybridops-studio/terraform-proxmox-sdn)
+- [Repository](https://github.com/hybridops-tech/terraform-proxmox-sdn)
 
 Before opening a PR:
 
