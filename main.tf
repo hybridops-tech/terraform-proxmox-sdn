@@ -7,6 +7,29 @@ locals {
       for subnet_key, subnet in vnet.subnets :
       "${vnet_key}-${subnet_key}" => merge(subnet, {
         vnet_id = vnet_key
+
+        dhcp_enabled_effective = (
+          var.enable_host_l3 && var.enable_dhcp &&
+          try(subnet.dhcp_enabled, true) != false
+        )
+
+        dhcp_range_start_effective = (
+          (var.enable_host_l3 && var.enable_dhcp && try(subnet.dhcp_enabled, true) != false)
+          ? coalesce(try(subnet.dhcp_range_start, null), cidrhost(subnet.cidr, var.dhcp_default_start_host))
+          : null
+        )
+
+        dhcp_range_end_effective = (
+          (var.enable_host_l3 && var.enable_dhcp && try(subnet.dhcp_enabled, true) != false)
+          ? coalesce(try(subnet.dhcp_range_end, null), cidrhost(subnet.cidr, var.dhcp_default_end_host))
+          : null
+        )
+
+        dhcp_dns_server_effective = (
+          (var.enable_host_l3 && var.enable_dhcp && try(subnet.dhcp_enabled, true) != false)
+          ? coalesce(try(subnet.dhcp_dns_server, null), var.dhcp_default_dns_server)
+          : null
+        )
       })
     }
   ]...)
@@ -28,14 +51,7 @@ locals {
 
   dhcp_subnets = (var.enable_host_l3 && var.enable_dhcp) ? {
     for key, s in local.subnets_flat : key => s
-    if(
-      try(s.dhcp_enabled, null) == true ||
-      (
-        try(s.dhcp_enabled, null) == null &&
-        try(s.dhcp_range_start, null) != null &&
-        try(s.dhcp_range_end, null) != null
-      )
-    )
+    if s.dhcp_enabled_effective
   } : {}
 }
 
@@ -87,11 +103,15 @@ resource "null_resource" "gateway_setup" {
   for_each = var.enable_host_l3 ? local.subnets_flat : {}
 
   triggers = {
-    zone_name           = var.zone_name
-    vnet_id             = each.value.vnet_id
-    subnet_cidr         = each.value.cidr
-    gateway             = each.value.gateway
-    proxmox_host        = var.proxmox_host
+    zone_name    = var.zone_name
+    vnet_id      = each.value.vnet_id
+    subnet_cidr  = each.value.cidr
+    gateway      = each.value.gateway
+    proxmox_host = var.proxmox_host
+    # Force gateway re-apply for all subnets when SDN reload inputs change.
+    # Without this, gateway_cleanup can remove existing gateways during a zone/VNet change,
+    # but unchanged gateway_setup resources will not re-run.
+    sdn_reload_hash     = local.sdn_reload_hash
     setup_script_hash   = filemd5("${path.module}/scripts/setup/setup-gateway.sh")
     cleanup_script_hash = filemd5("${path.module}/scripts/cleanup/cleanup-gateway.sh")
   }
@@ -155,11 +175,13 @@ resource "null_resource" "nat_setup" {
   } : {}
 
   triggers = {
-    zone_name           = var.zone_name
-    vnet_id             = each.value.vnet_id
-    subnet_cidr         = each.value.cidr
-    proxmox_host        = var.proxmox_host
-    uplink_interface    = var.uplink_interface
+    zone_name        = var.zone_name
+    vnet_id          = each.value.vnet_id
+    subnet_cidr      = each.value.cidr
+    proxmox_host     = var.proxmox_host
+    uplink_interface = var.uplink_interface
+    # Re-run SNAT setup when SDN reload inputs change (zone/VNet expansions, etc.).
+    sdn_reload_hash     = local.sdn_reload_hash
     setup_script_hash   = filemd5("${path.module}/scripts/setup/setup-nat.sh")
     cleanup_script_hash = filemd5("${path.module}/scripts/cleanup/cleanup-nat.sh")
   }
@@ -222,16 +244,18 @@ resource "null_resource" "dhcp_setup" {
   for_each = local.dhcp_subnets
 
   triggers = {
-    zone_name           = var.zone_name
-    vnet_id             = each.value.vnet_id
-    subnet_cidr         = each.value.cidr
-    gateway             = each.value.gateway
-    dhcp_range_start    = each.value.dhcp_range_start
-    dhcp_range_end      = each.value.dhcp_range_end
-    dns_server          = try(each.value.dhcp_dns_server, "8.8.8.8")
-    dns_domain          = var.dns_domain
-    dns_lease           = var.dns_lease
-    proxmox_host        = var.proxmox_host
+    zone_name        = var.zone_name
+    vnet_id          = each.value.vnet_id
+    subnet_cidr      = each.value.cidr
+    gateway          = each.value.gateway
+    dhcp_range_start = each.value.dhcp_range_start_effective
+    dhcp_range_end   = each.value.dhcp_range_end_effective
+    dns_server       = coalesce(each.value.dhcp_dns_server_effective, var.dhcp_default_dns_server)
+    dns_domain       = var.dns_domain
+    dns_lease        = var.dns_lease
+    proxmox_host     = var.proxmox_host
+    # Re-run DHCP setup when SDN reload inputs change (zone/VNet expansions, etc.).
+    sdn_reload_hash     = local.sdn_reload_hash
     setup_script_hash   = filemd5("${path.module}/scripts/setup/setup-dhcp.sh")
     cleanup_script_hash = filemd5("${path.module}/scripts/cleanup/cleanup-dhcp.sh")
   }
@@ -244,9 +268,9 @@ resource "null_resource" "dhcp_setup" {
         "${each.value.vnet_id}" \
         "${each.value.cidr}" \
         "${each.value.gateway}" \
-        "${each.value.dhcp_range_start}" \
-        "${each.value.dhcp_range_end}" \
-        "${try(each.value.dhcp_dns_server, "8.8.8.8")}" \
+        "${each.value.dhcp_range_start_effective}" \
+        "${each.value.dhcp_range_end_effective}" \
+        "${coalesce(each.value.dhcp_dns_server_effective, var.dhcp_default_dns_server)}" \
         "${var.dns_domain}" \
         "${var.dns_lease}"'
     EOT

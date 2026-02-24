@@ -123,3 +123,49 @@ variable "proxmox_insecure" {
   type        = bool
   default     = false
 }
+
+variable "ipam_site" {
+  description = "NetBox site slug/name to stamp onto IPAM exports."
+  type        = string
+  default     = "onprem-hybridhub"
+}
+
+variable "ipam_status" {
+  description = "NetBox status to stamp onto IPAM exports."
+  type        = string
+  default     = "active"
+}
+
+variable "static_last_host" {
+  description = "Last host index in the 'static' region for description text."
+  type        = number
+  default     = 119
+}
+
+variable "dhcp_default_dns_server" {
+  description = "Default DNS server for DHCP when not set per subnet."
+  type        = string
+  default     = "8.8.8.8"
+}
+
+variable "dhcp_default_start_host" {
+  description = "Default DHCP start host index when DHCP is enabled and start is not set."
+  type        = number
+  default     = 120
+
+  validation {
+    condition     = var.dhcp_default_start_host >= 2
+    error_message = "dhcp_default_start_host must be >= 2."
+  }
+}
+
+variable "dhcp_default_end_host" {
+  description = "Default DHCP end host index when DHCP is enabled and end is not set."
+  type        = number
+  default     = 220
+
+  validation {
+    condition     = var.dhcp_default_end_host > var.dhcp_default_start_host
+    error_message = "dhcp_default_end_host must be greater than dhcp_default_start_host."
+  }
+}

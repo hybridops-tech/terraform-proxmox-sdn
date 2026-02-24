@@ -1,35 +1,35 @@
 # Examples
 
-Each example demonstrates a specific use case for the `terraform-proxmox-sdn` module.
+Each directory under `examples/` demonstrates a specific use case for the `terraform-proxmox-sdn` module.
 
-## Available Examples
+## Available examples
 
-| Example             | Description                                       |
-|---------------------|---------------------------------------------------|
-| `basic`             | Single VNet with DHCP – minimal configuration     |
-| `homelab-six-vlans` | Six-VLAN homelab (mgmt/obs/dev/staging/prod/lab)  |
-| `no-dhcp`           | Static IP network without DHCP                    |
-| `multi-node`        | Multi-node cluster setup (planned feature)        |
+| Example | Description |
+|---|---|
+| `basic` | Single VNet with DHCP (minimal configuration). |
+| `homelab-six-vlans` | Six VLANs (mgmt/obs/dev/staging/prod/lab). |
+| `no-dhcp` | Static IP networking without DHCP. |
+| `multi-node` | Multi-node pattern (planned). |
 
----
+## Run an example
 
-## Usage
+From the repository root:
 
-1.Navigate to an example directory, for example:
+1. Change into the example directory:
 
    ```bash
    cd examples/basic
    ```
 
-2.Copy the example variables file:
+2. Create a working tfvars file:
 
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
 
-3.Edit `terraform.tfvars` with your Proxmox credentials and desired settings.
+3. Edit `terraform.tfvars` to match your environment.
 
-4.Initialize and apply Terraform:
+4. Apply:
 
    ```bash
    terraform init
@@ -37,49 +37,34 @@ Each example demonstrates a specific use case for the `terraform-proxmox-sdn` mo
    terraform apply
    ```
 
----
+## Required variables
 
-## Required Variables
-
-All examples expect at least the following variables:
+All examples expect the following variables:
 
 ```hcl
 proxmox_url      = "https://PROXMOX-IP:8006/api2/json"
-proxmox_token    = "USER@REALM!terraform=UUID"
+proxmox_token    = "USER@REALM!tokenid=TOKEN_SECRET"
 proxmox_insecure = true
 proxmox_node     = "pve"
 proxmox_host     = "PROXMOX-IP"
 ```
 
-> **Note:** `proxmox_insecure` should be set to `false` if your Proxmox instance has a valid TLS certificate.
+Notes:
 
----
+- Set `proxmox_insecure = false` when your Proxmox API endpoint has a valid TLS certificate.
+- Create an API token in the Proxmox UI under **Datacenter → Permissions → API Tokens**.
+- The module and examples expect a single `proxmox_token` string in the format:
+  - `<user>@<realm>!<tokenid>=<token_secret>`
 
-## Creating an API Token
+## Example tfvars
 
-1.Log in to the Proxmox web interface.
-2.Navigate to **Datacenter → Permissions → API Tokens**.
-3.Click **Add** and create a token for the desired user.
-4.Copy both the **token ID** and **secret**.
-5.Combine them in the format expected by the examples, for example:
-
-   ```text
-   root@pam!terraform=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-   ```
-
-This string is then assigned to `proxmox_token` in `terraform.tfvars`.
-
----
-
-## Example: `examples/basic/terraform.tfvars.example`
+Example: `examples/basic/terraform.tfvars.example`
 
 ```hcl
-# Proxmox API configuration
 proxmox_url      = "https://192.168.1.10:8006/api2/json"
 proxmox_token    = "root@pam!terraform=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 proxmox_insecure = true
 
-# Proxmox node configuration
 proxmox_node = "pve"
 proxmox_host = "192.168.1.10"
 ```

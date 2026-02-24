@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-02-24
+
+### Fixed
+- Re-run host gateway, SNAT, and DHCP setup after SDN reload input changes
+  (zone/VNet expansions/contractions) so existing VNet interfaces do not lose
+  gateway configuration during topology updates.
+
+### Added
+- `ipam_prefixes` output for NetBox/IPAM dataset export from SDN inputs.
+
+### Changed
+- DHCP/subnet outputs now report effective values (including module defaults)
+  for downstream consumers.
+
 ## [0.1.2] - 2025-12-29
 
 ### Added
@@ -22,11 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `dhcp_enabled = false` forces DHCP off for that subnet, even when
     ranges are defined (ranges become documentation only).
 - Validation guardrails:
-  - `enable_dhcp = true` now requires `enable_host_l3 = true` so dnsmasq
-    can bind to the VNet interfaces safely.
-- Output refinement:
-  - `subnets[*].dhcp_enabled` now reports the effective DHCP state,
-    derived from module-level flags and per-subnet fields.
+  - `enable_dhcp = true` requires `enable_host_l3 = true` so dnsmasq can bind
+    to the VNet interfaces safely.
+- IPAM export payload output:
+  - Added `ipam_prefixes` output to provide a NetBox-ready dataset derived from
+    SDN inputs (prefixes + DHCP metadata).
+  - Added IPAM metadata inputs:
+    - `ipam_site`, `ipam_status` – stamp site/status onto `ipam_prefixes`.
+    - `static_last_host` – used for description text when generating the
+      NetBox IPAM payload.
+    - `dhcp_default_dns_server`, `dhcp_default_start_host`,
+      `dhcp_default_end_host` – default DHCP values when not set per subnet.
 
 ### Changed
 - SDN orchestration:
@@ -39,22 +59,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Separated `gateway_cleanup`, `nat_cleanup`, and `dhcp_cleanup` to use
     stable triggers (zone name, host, VNet hash), improving destroy ordering
     and idempotency.
+- Outputs:
+  - `subnets[*].dhcp_enabled` now reports the effective DHCP state, derived
+    from module-level flags and per-subnet fields.
+  - `subnets[*].dhcp_range_start`, `subnets[*].dhcp_range_end`, and
+    `subnets[*].dhcp_dns_server` now report effective values (including module
+    defaults) when DHCP is enabled.
 - Examples updated to use the new flags and semantics:
   - `basic` – minimal VNet with implicit DHCP (ranges only).
-  - `homelab-six-vlans` – six-VLAN layout (mgmt/obs/dev/staging/prod/lab)
+  - `homelab-six-vlans` – six-VLAN reference layout (mgmt/obs/dev/staging/prod/lab)
     with L3, SNAT, and per-VNet DHCP.
   - `no-dhcp` – static-only network with L3 + SNAT enabled and no DHCP.
-  - `multi-node` – single-node “cluster zone” layout plus a commented
-    scaffold for future multi-node support.
+  - `multi-node` – single-node “cluster zone” layout plus a commented scaffold
+    for future multi-node support.
 - Documentation:
   - Module README updated to describe `enable_host_l3`, `enable_snat`,
     `enable_dhcp`, and implicit vs explicit DHCP behaviour.
-  - Companion HOWTO and SDN operations runbook in the HybridOps.Studio
-    platform docs aligned with the 0.1.2 behaviour and examples.
-  - Clarified that the SDN auto-healing helper is:
-    - Optional.
-    - Scoped to the reference VLAN plan.
-    - Not required for correct routing, NAT, or DHCP.
+  - SDN operations documentation in HybridOps.Studio platform docs aligned with
+    the 0.1.2 behaviour and examples.
+  - Clarified that the SDN auto-healing helper is optional and not required for
+    correct routing, NAT, or DHCP.
 
 ### Fixed
 - Ensured no-DHCP scenarios still:
@@ -76,11 +100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - dnsmasq-based DHCP helper for Proxmox SDN subnets, including support for
   `dns_domain` and `dns_lease` inputs.
-- SDN auto-healing script and systemd units to keep Proxmox SDN status
-  aligned with the running configuration and clear stale warnings in the UI.
+- SDN auto-healing script and systemd units to keep Proxmox SDN status aligned
+  with the running configuration and clear stale warnings in the UI.
 - Updated examples:
   - `basic` – single VNet with DHCP and standard `.120–.220` pool.
-  - `homelab-six-vlans` – six-VLAN homelab layout (mgmt/obs/dev/staging/prod/lab).
+  - `homelab-six-vlans` – six-VLAN reference layout (mgmt/obs/dev/staging/prod/lab).
   - `no-dhcp` – static-only network with DHCP disabled.
   - `multi-node` – single-node implementation plus commented scaffold for
     future multi-node support.
@@ -92,8 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Subnets now use `dhcp_enabled`, `dhcp_range_start`, `dhcp_range_end`,
     and `dhcp_dns_server` fields only (no `vnet` field required inside the
     subnet map).
-  - DHCP ranges in examples now follow the reserved layout (`.120–.220`) to
-    match the documented IP allocation strategy.
+  - DHCP ranges in examples follow the reserved layout (`.120–.220`) to match
+    the documented IP allocation strategy.
 - Refined README usage examples to use `dns_domain` / `dns_lease` and to
   reference the module via the Terraform Registry for external consumers.
 
@@ -111,6 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for creating:
   - A VLAN-backed SDN zone on a Proxmox bridge.
   - VNets and subnets via a single `vnets` map input.
-- Baseline examples for a single VNet with a `/24` subnet and gateway on the
+- Baseline example for a single VNet with a `/24` subnet and gateway on the
   VNet bridge.
 - Documentation for SDN ID constraints and basic network layout.
