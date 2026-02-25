@@ -68,6 +68,12 @@ variable "dns_lease" {
   }
 }
 
+variable "host_reconcile_nonce" {
+  description = "Optional operator-supplied token to force host-side SDN reconciliation (gateway/NAT/DHCP) even when topology inputs are unchanged."
+  type        = string
+  default     = ""
+}
+
 variable "vnets" {
   description = <<-EOT
     SDN VNets map keyed by VNet ID.

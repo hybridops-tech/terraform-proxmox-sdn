@@ -51,7 +51,7 @@ provider "proxmox" {
 
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "~> 0.1.3"
+  version = "~> 0.1.4"
 
   # SDN zone ID must follow Proxmox SDN rules (<= 8 chars, no dashes)
   zone_name    = "hybzone"
@@ -67,6 +67,9 @@ module "sdn" {
   enable_dhcp = true
   dns_domain  = "hybridops.local"
   dns_lease   = "24h"
+  # Optional: force one host-side reconcile when recovering from drift
+  # (gateway/NAT/DHCP) without changing topology inputs.
+  # host_reconcile_nonce = "CHG-20260225-01"
 
   vnets = {
     vnetmgmt = {
@@ -113,7 +116,7 @@ For monorepos or Terragrunt-based stacks, you can pin a specific tag from GitHub
 module "sdn" {
   source = "github.com/hybridops-tech/terraform-proxmox-sdn//."
   # Optionally pin a tag:
-  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.3"
+  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.4"
 }
 ```
 
@@ -180,8 +183,23 @@ Typical reference layout (six VLANs):
 | `enable_dhcp`      | bool   | `false` | Enable dnsmasq DHCP provisioning (requires `enable_host_l3 = true`). |
 | `dns_domain`       | string | `hybridops.local` | DNS domain used in dnsmasq config. |
 | `dns_lease`        | string | `24h`   | DHCP lease time (`<number><s|m|h|d>`, e.g. `24h`). |
+| `host_reconcile_nonce` | string | `""` | Optional operator token to force host-side SDN reconciliation (gateway/NAT/DHCP) on the next apply, even when topology inputs are unchanged. |
 
 > The module enforces that `enable_dhcp = true` requires `enable_host_l3 = true`, so dnsmasq can bind to VNet interfaces safely.
+
+### Recovery / self-heal (host-side drift)
+
+If host-side SDN state drifts (for example a `vnet*` bridge exists but the
+expected gateway IP is missing) and topology inputs are unchanged, rerun
+`terraform apply` with a one-time `host_reconcile_nonce` value to force the
+host-side gateway/NAT/DHCP setup scripts to re-run:
+
+```hcl
+host_reconcile_nonce = "CHG-20260225-01"
+```
+
+This is the supported recovery path. Avoid changing unrelated settings (for
+example `dns_lease`) just to trigger reconciliation.
 
 ### VNet structure
 

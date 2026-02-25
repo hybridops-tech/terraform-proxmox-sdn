@@ -46,7 +46,10 @@ locals {
     enable_dhcp      = var.enable_dhcp
     dns_domain       = var.dns_domain
     dns_lease        = var.dns_lease
-    vnets            = var.vnets
+    # Explicit operator-controlled nonce to force host-side reconciliation
+    # (gateway/NAT/DHCP) even when topology inputs are otherwise unchanged.
+    host_reconcile_nonce = var.host_reconcile_nonce
+    vnets                = var.vnets
   }))
 
   dhcp_subnets = (var.enable_host_l3 && var.enable_dhcp) ? {

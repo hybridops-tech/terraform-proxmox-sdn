@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `host_reconcile_nonce` input to explicitly force host-side SDN reconciliation
+  (gateway/NAT/DHCP) when topology inputs are unchanged but host state drifted.
+
+## [0.1.4] - 2026-02-25
+
+### Added
+- `host_reconcile_nonce` input to explicitly force host-side SDN reconciliation
+  (gateway/NAT/DHCP) during same-input recovery runs (for example when host
+  gateway IPs drift but SDN topology inputs are unchanged).
+
 ## [0.1.3] - 2026-02-24
 
 ### Fixed
