@@ -2,7 +2,7 @@
 # file: setup-dhcp.sh
 # purpose: Configure dnsmasq DHCP service for a Proxmox SDN VNet interface
 # architecture decision: ADR-0101
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

@@ -1,5 +1,5 @@
 # purpose: Input variables for Proxmox SDN VLAN zone, VNets, and host-level orchestration (NAT, DHCP, gateway)
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 variable "zone_name" {
   description = "SDN zone name."

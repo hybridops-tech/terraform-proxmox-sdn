@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # purpose: Install SDN status self-healing (config patch + status refresh) on Proxmox
 # architecture decision: ADR-0102
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 set -euo pipefail
 
@@ -11,7 +11,7 @@ cat > /usr/local/bin/fix-sdn-status.sh << 'FIXSCRIPT'
 #!/usr/bin/env bash
 # purpose: Patch SDN interface config, ensure VNet gateways, and refresh SDN status in Proxmox UI
 # architecture decision: ADR-0102
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 set -euo pipefail
 
@@ -26,58 +26,12 @@ fi
 
 SDN_FILE="/etc/network/interfaces.d/sdn"
 
-log "normalising ${SDN_FILE}"
-if [ ! -f "${SDN_FILE}" ]; then
-  touch "${SDN_FILE}"
-fi
+STATE_DIR="/var/lib/hybridops-sdn/gateway"
 
-# HybridOps reference layout: VLANs 10/11/20/30/40/50 -> 10.10/11/20/30/40/50.0.0/24.
-declare -A GW_CIDR=(
-  ["vnetmgmt"]="10.10.0.1/24"
-  ["vnetobs"]="10.11.0.1/24"
-  ["vnetdev"]="10.20.0.1/24"
-  ["vnetstag"]="10.30.0.1/24"
-  ["vnetprod"]="10.40.0.1/24"
-  ["vnetlab"]="10.50.0.1/24"
-)
-
-cidr_to_netmask() {
-  case "$1" in
-    24) echo "255.255.255.0" ;;
-    16) echo "255.255.0.0" ;;
-    8)  echo "255.0.0.0" ;;
-    *)  echo "" ;;
-  esac
+read_kv() {
+  local file="$1" key="$2"
+  grep -E "^${key}=" "${file}" | head -n1 | cut -d= -f2- || true
 }
-
-for IFACE in "${!GW_CIDR[@]}"; do
-  if ! ip link show "${IFACE}" >/dev/null 2>&1; then
-    continue
-  fi
-
-  CIDR="${GW_CIDR[${IFACE}]}"
-  IP="${CIDR%/*}"
-  PREFIX="${CIDR#*/}"
-  NETMASK="$(cidr_to_netmask "${PREFIX}")"
-
-  if [ -n "${NETMASK}" ] && ! grep -qE "^iface ${IFACE} inet " "${SDN_FILE}"; then
-    log "adding ${IFACE} stanza to ${SDN_FILE}"
-    {
-      echo ""
-      echo "auto ${IFACE}"
-      echo "iface ${IFACE} inet static"
-      echo "  address ${IP}"
-      echo "  netmask ${NETMASK}"
-    } >> "${SDN_FILE}"
-  fi
-
-  if ! ip -4 addr show dev "${IFACE}" | grep -q " ${IP}/${PREFIX}"; then
-    log "ensuring ${IP}/${PREFIX} on ${IFACE}"
-    ip addr flush dev "${IFACE}" || true
-    ip addr add "${IP}/${PREFIX}" dev "${IFACE}"
-    ip link set "${IFACE}" up
-  fi
-done
 
 if pvesh ls /cluster/sdn >/dev/null 2>&1; then
   if pvesh set /cluster/sdn >/dev/null 2>&1; then
@@ -91,18 +45,122 @@ else
   log "/cluster/sdn endpoint not available"
 fi
 
-UNITS=$(systemctl list-unit-files 'dnsmasq@hybridops-sdn-dhcp-*' --no-legend 2>/dev/null | awk '{print $1}' || true)
+log "normalising ${SDN_FILE}"
+if [ ! -f "${SDN_FILE}" ]; then
+  touch "${SDN_FILE}"
+fi
 
-if [ -n "${UNITS}" ]; then
+shopt -s nullglob
+STATE_FILES=("${STATE_DIR}"/hybridops-sdn-gateway-*.env)
+DHCP_UNITS=()
+if [ "${#STATE_FILES[@]}" -eq 0 ]; then
+  log "no gateway state files found under ${STATE_DIR}; skipping gateway/interface reconciliation"
+else
+  python3 - "${SDN_FILE}" "${STATE_FILES[@]}" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+sdn_path = Path(sys.argv[1])
+state_files = [Path(p) for p in sys.argv[2:]]
+
+addr_map = {}
+for state_file in state_files:
+    values = {}
+    for line in state_file.read_text().splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+    iface = values.get("VNET_ID")
+    gateway = values.get("GATEWAY")
+    prefix = values.get("PREFIX")
+    if not prefix:
+        subnet_cidr = values.get("SUBNET_CIDR", "")
+        if "/" in subnet_cidr:
+            prefix = subnet_cidr.split("/", 1)[1]
+    if iface and gateway and prefix:
+        addr_map[iface] = f"{gateway}/{prefix}"
+
+if not addr_map:
+    raise SystemExit(0)
+
+lines = sdn_path.read_text().splitlines()
+out = []
+current_iface = None
+address_written = set()
+
+def flush_address_for_iface(iface: str | None) -> None:
+    if iface and iface in addr_map and iface not in address_written:
+        out.append(f"\taddress {addr_map[iface]}")
+        address_written.add(iface)
+
+for line in lines:
+    iface_match = re.match(r"^iface\s+(\S+)(?:\s+.*)?$", line)
+    auto_match = re.match(r"^auto\s+(\S+)$", line)
+
+    if iface_match:
+        flush_address_for_iface(current_iface)
+        current_iface = iface_match.group(1)
+        if current_iface in addr_map:
+            line = f"iface {current_iface} inet static"
+    elif auto_match:
+        flush_address_for_iface(current_iface)
+        current_iface = None
+    elif current_iface in addr_map and re.match(r"^\s*address\s+", line):
+        # Replace any previously injected or stale address line with the current derived gateway.
+        continue
+
+    out.append(line)
+
+flush_address_for_iface(current_iface)
+sdn_path.write_text("\n".join(out) + "\n")
+PY
+fi
+
+for STATE_FILE in "${STATE_FILES[@]}"; do
+  IFACE="$(read_kv "${STATE_FILE}" "VNET_ID")"
+  ZONE_NAME="$(read_kv "${STATE_FILE}" "ZONE_NAME")"
+  SUBNET_CIDR="$(read_kv "${STATE_FILE}" "SUBNET_CIDR")"
+  GATEWAY="$(read_kv "${STATE_FILE}" "GATEWAY")"
+  PREFIX="$(read_kv "${STATE_FILE}" "PREFIX")"
+  if [ -z "${PREFIX}" ]; then
+    PREFIX="${SUBNET_CIDR#*/}"
+  fi
+  if [ -z "${IFACE}" ] || [ -z "${ZONE_NAME}" ] || [ -z "${SUBNET_CIDR}" ] || [ -z "${GATEWAY}" ] || [ -z "${PREFIX}" ]; then
+    log "skipping malformed state file ${STATE_FILE}"
+    continue
+  fi
+  if ! ip link show "${IFACE}" >/dev/null 2>&1; then
+    continue
+  fi
+
+  IP="${GATEWAY}"
+
+  if ! ip -4 addr show dev "${IFACE}" | grep -q " ${IP}/${PREFIX}"; then
+    log "ensuring ${IP}/${PREFIX} on ${IFACE}"
+    ip addr flush dev "${IFACE}" || true
+    ip addr add "${IP}/${PREFIX}" dev "${IFACE}"
+    ip link set "${IFACE}" up
+  fi
+
+  NETWORK="${SUBNET_CIDR%/*}"
+  DHCP_SERVICE="dnsmasq@hybridops-sdn-dhcp-${IFACE}-${ZONE_NAME}-${NETWORK//./-}-${PREFIX}.service"
+  if systemctl list-unit-files "${DHCP_SERVICE}" --no-legend >/dev/null 2>&1; then
+    DHCP_UNITS+=("${DHCP_SERVICE}")
+  fi
+done
+
+if [ "${#DHCP_UNITS[@]}" -gt 0 ]; then
   log "restarting HybridOps SDN DHCP units"
-  echo "${UNITS}" | while read -r UNIT; do
+  printf '%s\n' "${DHCP_UNITS[@]}" | sort -u | while read -r UNIT; do
     [ -n "${UNIT}" ] || continue
     log " -> ${UNIT}"
     systemctl enable "${UNIT}" >/dev/null 2>&1 || true
     systemctl restart "${UNIT}" || true
   done
 else
-  log "no dnsmasq@hybridops-sdn-dhcp-* units found; skipping DHCP restart"
+  log "no matching HybridOps SDN DHCP units found for managed VNets; skipping DHCP restart"
 fi
 
 log "completed SDN status fix"
@@ -133,7 +191,6 @@ Description=Watch Proxmox SDN config and trigger status auto-fix
 [Path]
 Unit=sdn-status-fix.service
 PathModified=/etc/pve/sdn
-PathModified=/etc/network/interfaces.d/sdn
 
 [Install]
 WantedBy=multi-user.target

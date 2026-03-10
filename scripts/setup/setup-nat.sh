@@ -2,7 +2,7 @@
 # file: setup-nat.sh
 # purpose: Configure SNAT and forwarding for a Proxmox SDN VNet subnet via an uplink interface
 # architecture decision: ADR-0102
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

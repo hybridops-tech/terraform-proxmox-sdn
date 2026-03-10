@@ -7,9 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-03-10
+
 ### Added
 - `host_reconcile_nonce` input to explicitly force host-side SDN reconciliation
   (gateway/NAT/DHCP) when topology inputs are unchanged but host state drifted.
+
+### Fixed
+- Normalise generated `vnet*` interface stanzas to `inet static` with the
+  derived gateway address so Proxmox SDN status no longer reports false
+  `error` states when host L3 is healthy.
+- Run the SDN status helper after `/cluster/sdn` generation and stop watching
+  the helper-managed `/etc/network/interfaces.d/sdn` file directly, avoiding
+  self-trigger loops while keeping status repair non-destructive.
+- Scope DHCP restarts to currently managed VNets derived from gateway state
+  instead of touching unrelated historical HybridOps dnsmasq units on the host.
 
 ## [0.1.4] - 2026-02-25
 
@@ -86,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation:
   - Module README updated to describe `enable_host_l3`, `enable_snat`,
     `enable_dhcp`, and implicit vs explicit DHCP behaviour.
-  - SDN operations documentation in HybridOps.Studio platform docs aligned with
+- SDN operations documentation in HybridOps docs aligned with
     the 0.1.2 behaviour and examples.
   - Clarified that the SDN auto-healing helper is optional and not required for
     correct routing, NAT, or DHCP.

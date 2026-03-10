@@ -23,7 +23,7 @@ It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and 
 Designed for **production-ready Proxmox platforms**, from advanced labs to full **production-style** environments, and usable:
 
 - As **standalone Terraform** in a focused project, advanced lab, or production stack.
-- As part of a **Terragrunt / monorepo stack** (for example, within the HybridOps.Studio `live-v1` layout).
+- As part of a **Terragrunt / monorepo stack** (for example, within a HybridOps `live-v1` layout).
 
 ---
 
@@ -51,7 +51,7 @@ provider "proxmox" {
 
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "~> 0.1.4"
+  version = "~> 0.1.5"
 
   # SDN zone ID must follow Proxmox SDN rules (<= 8 chars, no dashes)
   zone_name    = "hybzone"
@@ -116,7 +116,7 @@ For monorepos or Terragrunt-based stacks, you can pin a specific tag from GitHub
 module "sdn" {
   source = "github.com/hybridops-tech/terraform-proxmox-sdn//."
   # Optionally pin a tag:
-  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.4"
+  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.5"
 }
 ```
 
@@ -293,6 +293,95 @@ This output is designed to be consumed by downstream tooling (for example, NetBo
   - VNet bridge interfaces with gateway IPs.
   - Optional SNAT rules, so subnets can reach the internet with static IPs only.
 
+## Deployment modes
+
+The module supports two valid operating patterns:
+
+### 1. Host-routed mode
+
+Use this for:
+- bootstrap foundations
+- academy/lab environments
+- single-node or small-site deployments where Proxmox can safely provide L3/NAT/DHCP
+
+Typical settings:
+
+```hcl
+enable_host_l3 = true
+enable_snat    = true
+enable_dhcp    = true
+```
+
+In this mode the Proxmox node owns:
+- subnet gateway IPs on `vnet*`
+- optional SNAT via the chosen uplink
+- optional dnsmasq-based DHCP
+
+### 2. Edge-routed mode
+
+Use this for:
+- production platforms with a dedicated edge/router appliance
+- HybridOps WAN edge / VyOS designs
+- environments where north-south routing should not be handled by the hypervisor
+
+Typical settings:
+
+```hcl
+enable_host_l3 = false
+enable_snat    = false
+enable_dhcp    = false
+```
+
+In this mode Proxmox SDN provides:
+- VLAN-backed segmentation
+- VNet and subnet object management
+
+and routing/DHCP are delegated to the actual edge or network services layer.
+
+Recommended production posture:
+- let **VyOS or the edge tier** own north-south routing and egress
+- keep Proxmox SDN focused on segmentation unless you explicitly want host-routed subnets
+
+## Brownfield adoption
+
+If a site already has manually created Proxmox SDN objects, do **not** assume this
+module can safely take them over just by using the same names.
+
+Safe options are:
+- create a **new zone/VNet set** managed only by this module, or
+- perform a deliberate **import/cutover** into Terraform state before treating
+  the module as the source of truth
+
+Unsafe pattern:
+- pointing the module at an existing manually managed zone/VNet set without an
+  import plan, then expecting `destroy` to distinguish operator-created objects
+  from module-managed ones
+
+The module is safe when it is the authoritative owner of the SDN objects in its
+Terraform state.
+
+## Destroy scope
+
+`terraform destroy` / `hyops destroy` is **zone-scoped**, not a blanket Proxmox
+network wipe.
+
+What it removes for the zone in its own state:
+- the SDN zone/VNet/subnet objects managed by the module
+- gateway addresses derived from that zone's gateway state files
+- NAT rules tagged for that zone
+- dnsmasq DHCP units/configs matching that zone name
+
+What it does **not** intentionally remove:
+- unrelated Proxmox bridges and manual Linux networking outside the zone
+- NAT rules not tagged with the module's comment format
+- DHCP units/configs for other zones
+- unrelated SDN zones not in this Terraform state
+
+Destroy is still disruptive for the zone it manages, so reserve it for:
+- lab teardown
+- controlled rebuilds
+- deliberate decommission of a module-owned SDN segment
+
 ---
 
 ## Known limitations
@@ -300,19 +389,23 @@ This output is designed to be consumed by downstream tooling (for example, NetBo
 - SDN zone and VNet IDs must follow **Proxmox SDN naming rules** (≤ 8 chars, no dashes).
 - After `destroy`, VNet bridge interfaces may persist until networking is reloaded (`ifreload -a` / `pvesh set /cluster/sdn`).
 - `dnsmasq` is the only supported DHCP engine.
-- Proxmox UI may show SDN/DHCP status warnings in some edge cases, even when traffic flows correctly.
+- On older releases, Proxmox UI may show SDN status warnings even when traffic
+  flows correctly if host L3 gateway addresses were attached outside the
+  generated SDN interface file. Current releases normalise the generated
+  `vnet*` stanzas to `inet static` with the derived gateway address so UI
+  status aligns with the running host state.
 
 ---
 
-## Architecture & docs (HybridOps.Studio)
+## Architecture & docs (HybridOps)
 
-This module implements the Proxmox SDN foundation used by HybridOps.Studio, including VLAN allocation and NetBox/IPAM integration via the `ipam_prefixes` output.
+This module implements the Proxmox SDN foundation used by HybridOps, including VLAN allocation and NetBox/IPAM integration via the `ipam_prefixes` output.
 
-- [How-to: Proxmox SDN with Terraform](https://docs.hybridops.studio/howtos/network/proxmox-sdn-terraform/)
-- [Network Architecture](https://docs.hybridops.studio/prerequisites/network-architecture/)
-- [ADR-0101 – VLAN Allocation Strategy](https://docs.hybridops.studio/adr/ADR-0101-vlan-allocation-strategy/)
-- [ADR-0102 – Proxmox as Core Router](https://docs.hybridops.studio/adr/ADR-0102-proxmox-intra-site-core-router/)
-- [ADR-0104 – Static IP Allocation (Terraform IPAM)](https://docs.hybridops.studio/adr/ADR-0104-static-ip-allocation-terraform-ipam/)
+- [How-to: Proxmox SDN with Terraform](https://docs.hybridops.tech/howto/networking/HOWTO-proxmox-sdn-terraform/)
+- [Network Architecture](https://docs.hybridops.tech/guides/getting-started/20-network-architecture/)
+- [ADR-0101 – VLAN Allocation Strategy](https://docs.hybridops.tech/adr/ADR-0101-vlan-allocation-strategy/)
+- [ADR-0102 – Proxmox as Core Router](https://docs.hybridops.tech/adr/ADR-0102-proxmox-intra-site-core-router/)
+- [ADR-0104 – Static IP Allocation (Terraform IPAM)](https://docs.hybridops.tech/adr/ADR-0104-static-ip-allocation-terraform-ipam/)
 
 ---
 
@@ -321,7 +414,7 @@ This module implements the Proxmox SDN foundation used by HybridOps.Studio, incl
 - Code: [MIT-0](https://spdx.org/licenses/MIT-0.html)  
 - Documentation & diagrams: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
-See the [HybridOps.Studio licensing overview](https://docs.hybridops.studio/briefings/legal/licensing/) for project-wide licence details.
+See the [HybridOps licensing overview](https://docs.hybridops.tech/briefings/legal/licensing/) for project-wide licence details.
 
 ---
 

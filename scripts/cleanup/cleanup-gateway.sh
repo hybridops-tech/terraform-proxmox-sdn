@@ -2,7 +2,7 @@
 # file: cleanup-gateway.sh
 # purpose: Remove subnet gateway IP from a Proxmox SDN VNet interface (L3 gateway only)
 # architecture decision: ADR-0101
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

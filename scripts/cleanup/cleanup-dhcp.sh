@@ -2,7 +2,7 @@
 # file: cleanup-dhcp.sh
 # purpose: Remove dnsmasq DHCP services created for Proxmox SDN VNet interfaces
 # architecture decision: ADR-0101
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

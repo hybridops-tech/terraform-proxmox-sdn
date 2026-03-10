@@ -2,7 +2,7 @@
 # file: cleanup-nat.sh
 # purpose: Remove SNAT and forwarding rules created for Proxmox SDN VNets using iptables comment tags
 # architecture decision: ADR-0102
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

@@ -1,6 +1,6 @@
 # file: examples/homelab-six-vlans/main.tf
 # purpose: Single-node SDN example with six VLAN-backed VNets
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 terraform {
   required_version = ">= 1.5.0"

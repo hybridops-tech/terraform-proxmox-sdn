@@ -2,7 +2,7 @@
 # file: setup-gateway.sh
 # purpose: Assign subnet gateway IP to a Proxmox SDN VNet interface (L3 gateway only)
 # architecture decision: ADR-0101
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 # date: 2025-12-27
 
 set -euo pipefail

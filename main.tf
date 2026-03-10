@@ -1,5 +1,5 @@
 # purpose: Proxmox SDN VLAN zone, vnets, subnets, and optional host-level orchestration (NAT, DHCP, gateway)
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 locals {
   subnets_flat = merge([
@@ -369,6 +369,47 @@ resource "null_resource" "sdn_reload" {
 
   depends_on = [
     proxmox_virtual_environment_sdn_applier.apply,
+  ]
+}
+
+resource "null_resource" "sdn_auto_healing" {
+  triggers = {
+    proxmox_host    = var.proxmox_host
+    sdn_reload_hash = local.sdn_reload_hash
+    installer_hash  = filemd5("${path.module}/scripts/setup/install-sdn-auto-healing.sh")
+    gateway_state_hash = sha1(jsonencode({
+      for key, subnet in local.subnets_flat : key => {
+        vnet_id = subnet.vnet_id
+        cidr    = subnet.cidr
+        gateway = subnet.gateway
+      }
+    }))
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      scp ${path.module}/scripts/setup/install-sdn-auto-healing.sh root@${self.triggers.proxmox_host}:/tmp/install-sdn-auto-healing.sh
+      ssh root@${self.triggers.proxmox_host} 'chmod +x /tmp/install-sdn-auto-healing.sh && /tmp/install-sdn-auto-healing.sh'
+    EOT
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      ssh root@${self.triggers.proxmox_host} 'set -eu
+        systemctl disable --now sdn-config-watcher.path >/dev/null 2>&1 || true
+        systemctl disable --now sdn-status-fix.service >/dev/null 2>&1 || true
+        rm -f /etc/systemd/system/sdn-config-watcher.path
+        rm -f /etc/systemd/system/sdn-status-fix.service
+        rm -f /usr/local/bin/fix-sdn-status.sh
+        systemctl daemon-reload || true'
+    EOT
+  }
+
+  depends_on = [
+    null_resource.sdn_reload,
+    null_resource.gateway_setup,
+    null_resource.dhcp_setup,
   ]
 }
 

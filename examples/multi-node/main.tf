@@ -1,6 +1,6 @@
 # file: examples/multi-node/main.tf
 # purpose: Single-node SDN example for a future Proxmox cluster zone
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 terraform {
   required_version = ">= 1.5.0"

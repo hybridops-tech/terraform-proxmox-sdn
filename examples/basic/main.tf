@@ -1,6 +1,6 @@
 # file: examples/basic/main.tf
 # purpose: Minimal single-VNet SDN example on a single Proxmox node
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 terraform {
   required_version = ">= 1.5.0"

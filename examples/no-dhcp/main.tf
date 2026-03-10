@@ -1,6 +1,6 @@
 # file: examples/no-dhcp/main.tf
 # purpose: Single-VNet SDN example with static IPs (no DHCP) on a Proxmox node
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 terraform {
   required_version = ">= 1.5.0"

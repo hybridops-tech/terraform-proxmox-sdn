@@ -1,5 +1,5 @@
 # purpose: Output values for Proxmox SDN VLAN zone, VNets, subnets, and NetBox IPAM export payload
-# maintainer: HybridOps.Studio
+# maintainer: HybridOps
 
 output "zone_name" {
   description = "SDN zone name."
