@@ -11,14 +11,11 @@ It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and 
 - Provision **dnsmasq DHCP** pools per subnet.
 - Emit a **NetBox-ready IPAM export payload** (prefixes + DHCP metadata).
 
-> **Namespace Migration Notice**
+> **Module Source**
 >
-> This module is now officially published under `hybridops-tech/sdn/proxmox`.
->
-> The previous namespace `hybridops-studio/sdn/proxmox` remains available for
-> compatibility but will not receive future releases.
->
-> Please update your Terraform source reference.
+> Prefer the Terraform Registry source `hybridops-tech/sdn/proxmox` for normal
+> consumption. Use a GitHub source only when you need an explicit repository or
+> tag pin outside the registry workflow.
 
 Designed for **production-ready Proxmox platforms**, from advanced labs to full **production-style** environments, and usable:
 
@@ -108,15 +105,14 @@ proxmox_node = "<PROXMOX-NODE-NAME>"
 proxmox_host = "<PROXMOX-IP>"
 ```
 
-### GitHub source (monorepos / pinning tags)
+### GitHub source (monorepos / explicit tag pinning)
 
-For monorepos or Terragrunt-based stacks, you can pin a specific tag from GitHub instead of (or in addition to) the Registry:
+For monorepos or Terragrunt-based stacks, you can pin a specific tag directly
+from GitHub when you do not want to consume the registry release path:
 
 ```hcl
 module "sdn" {
-  source = "github.com/hybridops-tech/terraform-proxmox-sdn//."
-  # Optionally pin a tag:
-  # source = "github.com/hybridops-tech/terraform-proxmox-sdn//.?ref=v0.1.5"
+  source = "git::https://github.com/hybridops-tech/terraform-proxmox-sdn.git//?ref=v0.1.5"
 }
 ```
 
