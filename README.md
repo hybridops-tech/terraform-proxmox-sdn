@@ -395,7 +395,7 @@ Destroy is still disruptive for the zone it manages, so reserve it for:
 
 ## Architecture & docs (HybridOps)
 
-This module implements the Proxmox SDN foundation used by HybridOps, including VLAN allocation and NetBox/IPAM integration via the `ipam_prefixes` output.
+This module implements the Proxmox SDN foundation used by [HybridOps](https://hybridops.tech) — a contract-driven execution platform for hybrid infrastructure — including VLAN allocation and NetBox/IPAM integration via the `ipam_prefixes` output.
 
 - [How-to: Proxmox SDN with Terraform](https://docs.hybridops.tech/howto/networking/HOWTO-proxmox-sdn-terraform/)
 - [Network Architecture](https://docs.hybridops.tech/guides/getting-started/20-network-architecture/)
