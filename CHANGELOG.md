@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `host_static_routes` input for host-routed Proxmox SDN deployments that need
+  selected upstream or cloud prefixes routed through a separate on-prem edge.
+
+### Changed
+- SDN auto-healing now reconciles HybridOps-managed host static routes in
+  addition to gateway, NAT, and DHCP state.
+
 ## [0.1.5] - 2026-03-10
 
 ### Added

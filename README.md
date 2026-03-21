@@ -180,8 +180,11 @@ Typical reference layout (six VLANs):
 | `dns_domain`       | string | `hybridops.local` | DNS domain used in dnsmasq config. |
 | `dns_lease`        | string | `24h`   | DHCP lease time (`<number><s|m|h|d>`, e.g. `24h`). |
 | `host_reconcile_nonce` | string | `""` | Optional operator token to force host-side SDN reconciliation (gateway/NAT/DHCP) on the next apply, even when topology inputs are unchanged. |
+| `host_static_routes` | list(object) | `[]` | Optional static routes installed on the Proxmox host when it owns the guest gateway role. |
 
 > The module enforces that `enable_dhcp = true` requires `enable_host_l3 = true`, so dnsmasq can bind to VNet interfaces safely.
+>
+> `host_static_routes` also requires `enable_host_l3 = true`, because the Proxmox host must be the effective gateway for guests before these routes can influence downstream traffic.
 
 ### Recovery / self-heal (host-side drift)
 
@@ -196,6 +199,36 @@ host_reconcile_nonce = "CHG-20260225-01"
 
 This is the supported recovery path. Avoid changing unrelated settings (for
 example `dns_lease`) just to trigger reconciliation.
+
+### Optional upstream/cloud route handoff
+
+When the Proxmox host is running in host-routed mode but a separate on-prem edge
+owns cloud or WAN reachability, install explicit prefixes on the Proxmox host:
+
+```hcl
+host_static_routes = [
+  {
+    destination_cidr = "10.72.0.0/20"
+    next_hop         = "10.10.0.20"
+  },
+  {
+    destination_cidr = "10.72.16.0/20"
+    next_hop         = "10.10.0.20"
+  },
+  {
+    destination_cidr = "10.74.0.0/18"
+    next_hop         = "10.10.0.20"
+  },
+]
+```
+
+This is the supported model for site-extension or edge-anchor designs where:
+- guests still use the Proxmox host as their default gateway
+- the separate edge/router is the owner of upstream cloud prefixes
+
+For greenfield sites, or where guest gateway ownership can be moved safely,
+prefer the edge-routed model instead of extending host-routed mode with static
+route handoff.
 
 ### VNet structure
 
@@ -312,6 +345,7 @@ In this mode the Proxmox node owns:
 - subnet gateway IPs on `vnet*`
 - optional SNAT via the chosen uplink
 - optional dnsmasq-based DHCP
+- optional `host_static_routes` for selected upstream or cloud prefixes
 
 ### 2. Edge-routed mode
 

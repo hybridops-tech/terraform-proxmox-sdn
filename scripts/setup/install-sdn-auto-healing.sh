@@ -27,6 +27,7 @@ fi
 SDN_FILE="/etc/network/interfaces.d/sdn"
 
 STATE_DIR="/var/lib/hybridops-sdn/gateway"
+ROUTE_STATE_DIR="/var/lib/hybridops-sdn/route"
 
 read_kv() {
   local file="$1" key="$2"
@@ -53,6 +54,7 @@ fi
 shopt -s nullglob
 STATE_FILES=("${STATE_DIR}"/hybridops-sdn-gateway-*.env)
 DHCP_UNITS=()
+ROUTE_STATE_FILES=("${ROUTE_STATE_DIR}"/hybridops-sdn-route-*.env)
 if [ "${#STATE_FILES[@]}" -eq 0 ]; then
   log "no gateway state files found under ${STATE_DIR}; skipping gateway/interface reconciliation"
 else
@@ -150,6 +152,27 @@ for STATE_FILE in "${STATE_FILES[@]}"; do
     DHCP_UNITS+=("${DHCP_SERVICE}")
   fi
 done
+
+if [ "${#ROUTE_STATE_FILES[@]}" -eq 0 ]; then
+  log "no managed static route state files found under ${ROUTE_STATE_DIR}; skipping route reconciliation"
+else
+  for ROUTE_STATE_FILE in "${ROUTE_STATE_FILES[@]}"; do
+    DESTINATION_CIDR="$(read_kv "${ROUTE_STATE_FILE}" "DESTINATION_CIDR")"
+    NEXT_HOP="$(read_kv "${ROUTE_STATE_FILE}" "NEXT_HOP")"
+    if [ -z "${DESTINATION_CIDR}" ] || [ -z "${NEXT_HOP}" ]; then
+      log "skipping malformed route state file ${ROUTE_STATE_FILE}"
+      continue
+    fi
+
+    if ! ip route get "${NEXT_HOP}" >/dev/null 2>&1; then
+      log "cannot reach next-hop ${NEXT_HOP} for ${DESTINATION_CIDR}; leaving route untouched"
+      continue
+    fi
+
+    log "ensuring static route ${DESTINATION_CIDR} via ${NEXT_HOP}"
+    ip route replace "${DESTINATION_CIDR}" via "${NEXT_HOP}"
+  done
+fi
 
 if [ "${#DHCP_UNITS[@]}" -gt 0 ]; then
   log "restarting HybridOps SDN DHCP units"

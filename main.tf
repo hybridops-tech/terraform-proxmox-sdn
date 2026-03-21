@@ -49,8 +49,21 @@ locals {
     # Explicit operator-controlled nonce to force host-side reconciliation
     # (gateway/NAT/DHCP) even when topology inputs are otherwise unchanged.
     host_reconcile_nonce = var.host_reconcile_nonce
+    host_static_routes   = var.host_static_routes
     vnets                = var.vnets
   }))
+
+  host_static_routes = {
+    for route in var.host_static_routes :
+    format(
+      "%s-via-%s",
+      replace(replace(trimspace(route.destination_cidr), ".", "-"), "/", "-"),
+      replace(trimspace(route.next_hop), ".", "-"),
+      ) => {
+      destination_cidr = trimspace(route.destination_cidr)
+      next_hop         = trimspace(route.next_hop)
+    }
+  }
 
   dhcp_subnets = (var.enable_host_l3 && var.enable_dhcp) ? {
     for key, s in local.subnets_flat : key => s
@@ -168,6 +181,71 @@ resource "null_resource" "gateway_cleanup" {
 
   depends_on = [
     null_resource.gateway_setup,
+    proxmox_virtual_environment_sdn_applier.apply,
+  ]
+}
+
+resource "null_resource" "host_route_setup" {
+  for_each = var.enable_host_l3 ? local.host_static_routes : {}
+
+  triggers = {
+    zone_name           = var.zone_name
+    destination_cidr    = each.value.destination_cidr
+    next_hop            = each.value.next_hop
+    proxmox_host        = var.proxmox_host
+    sdn_reload_hash     = local.sdn_reload_hash
+    setup_script_hash   = filemd5("${path.module}/scripts/setup/setup-static-route.sh")
+    cleanup_script_hash = filemd5("${path.module}/scripts/cleanup/cleanup-static-route.sh")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      scp ${path.module}/scripts/setup/setup-static-route.sh root@${var.proxmox_host}:/tmp/setup-static-route-${each.key}.sh
+      ssh root@${var.proxmox_host} 'chmod +x /tmp/setup-static-route-${each.key}.sh && /tmp/setup-static-route-${each.key}.sh \
+        "${var.zone_name}" \
+        "${each.value.destination_cidr}" \
+        "${each.value.next_hop}"'
+    EOT
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      scp ${path.module}/scripts/cleanup/cleanup-static-route.sh root@${self.triggers.proxmox_host}:/tmp/cleanup-static-route.sh
+      ssh root@${self.triggers.proxmox_host} 'chmod +x /tmp/cleanup-static-route.sh && /tmp/cleanup-static-route.sh \
+        single \
+        "${self.triggers.zone_name}" \
+        "${self.triggers.destination_cidr}" \
+        "${self.triggers.next_hop}"'
+    EOT
+  }
+
+  depends_on = [
+    null_resource.sdn_reload,
+    null_resource.gateway_setup,
+  ]
+}
+
+resource "null_resource" "host_route_cleanup" {
+  triggers = {
+    count        = (var.enable_host_l3 && length(var.host_static_routes) > 0) ? 1 : 0
+    zone_name    = var.zone_name
+    proxmox_host = var.proxmox_host
+    routes_hash  = sha1(jsonencode(var.host_static_routes))
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<-EOT
+      scp ${path.module}/scripts/cleanup/cleanup-static-route.sh root@${self.triggers.proxmox_host}:/tmp/cleanup-static-route.sh
+      ssh root@${self.triggers.proxmox_host} 'chmod +x /tmp/cleanup-static-route.sh && /tmp/cleanup-static-route.sh \
+        zone \
+        "${self.triggers.zone_name}"'
+    EOT
+  }
+
+  depends_on = [
+    null_resource.host_route_setup,
     proxmox_virtual_environment_sdn_applier.apply,
   ]
 }
@@ -384,6 +462,7 @@ resource "null_resource" "sdn_auto_healing" {
         gateway = subnet.gateway
       }
     }))
+    route_state_hash = sha1(jsonencode(local.host_static_routes))
   }
 
   provisioner "local-exec" {
@@ -409,6 +488,7 @@ resource "null_resource" "sdn_auto_healing" {
   depends_on = [
     null_resource.sdn_reload,
     null_resource.gateway_setup,
+    null_resource.host_route_setup,
     null_resource.dhcp_setup,
   ]
 }

@@ -74,6 +74,27 @@ variable "host_reconcile_nonce" {
   default     = ""
 }
 
+variable "host_static_routes" {
+  description = <<-EOT
+    Optional static routes installed on the Proxmox host when it is acting as the
+    subnet gateway (`enable_host_l3 = true`).
+
+    This is the supported path for host-routed Proxmox SDN environments that need
+    selected cloud or upstream prefixes to exit through a separate on-prem edge.
+  EOT
+
+  type = list(object({
+    destination_cidr = string
+    next_hop         = string
+  }))
+  default = []
+
+  validation {
+    condition     = !(length(var.host_static_routes) > 0 && !var.enable_host_l3)
+    error_message = "host_static_routes requires enable_host_l3 = true because the Proxmox host must own the gateway role."
+  }
+}
+
 variable "vnets" {
   description = <<-EOT
     SDN VNets map keyed by VNet ID.
