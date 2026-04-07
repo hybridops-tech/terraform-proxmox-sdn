@@ -4,6 +4,8 @@
 
 Terraform module for managing **Proxmox SDN** (Software-Defined Networking) with optional **host L3**, **SNAT**, and **per-subnet DHCP via dnsmasq**.
 
+Use it when you want Proxmox networking to be **rebuildable and source-controlled** rather than manually recreated after every lab reset, host replacement, or environment rollout.
+
 It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and can:
 
 - Configure **gateway IPs** on VNet bridge interfaces (host L3).
@@ -11,20 +13,31 @@ It creates a VLAN-backed SDN zone, VNets, and subnets on **Proxmox VE 8.x** and 
 - Provision **dnsmasq DHCP** pools per subnet.
 - Emit a **NetBox-ready IPAM export payload** (prefixes + DHCP metadata).
 
+The two practical operating modes are:
+
+- **Host-routed**: Proxmox owns the gateway IPs, NAT, and optional DHCP. Good for serious labs, bootstrap, and smaller sites.
+- **Edge-routed**: Proxmox SDN provides segmentation, while a real edge appliance such as VyOS owns routing and DHCP.
+
 > **Module Source**
 >
 > Prefer the Terraform Registry source `hybridops-tech/sdn/proxmox` for normal
 > consumption. Use a GitHub source only when you need an explicit repository or
 > tag pin outside the registry workflow.
 
-Designed for **production-ready Proxmox platforms**, from advanced labs to full **production-style** environments, and usable:
+> **Repository**
+>
+> Source and issues: https://github.com/hybridops-tech/terraform-proxmox-sdn
+>
+> If the module is useful, a GitHub star is appreciated.
+
+Designed for **production-style Proxmox platforms** and advanced labs, and usable:
 
 - As **standalone Terraform** in a focused project, advanced lab, or production stack.
 - As part of a **Terragrunt / monorepo stack** (for example, within a HybridOps `live-v1` layout).
 
 ---
 
-## Usage
+## Quick start
 
 ### Minimal example (Terraform Registry / standalone)
 
