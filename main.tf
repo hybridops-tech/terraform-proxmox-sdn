@@ -112,6 +112,10 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
       )
       error_message = "When enable_host_orchestration = false, disable enable_host_l3, enable_snat, enable_dhcp, and host_static_routes."
     }
+    precondition {
+      condition     = !var.enable_snat || var.enable_host_l3
+      error_message = "enable_snat = true requires enable_host_l3 = true: SNAT is configured on the host-level L3 gateway, so it has no effective path when host L3 is disabled. Set enable_host_l3 = true to keep SNAT, or set enable_snat = false for an edge-routed (API-only) deployment."
+    }
   }
 
   depends_on = [null_resource.sdn_apply_finalizer]
