@@ -365,3 +365,121 @@ run "vlan_id_negative_invalid" {
 
   expect_failures = [var.vnets]
 }
+
+# ---- vnet description (applied as the Proxmox VNet alias) ----
+
+run "vnet_description_allowed_characters_valid" {
+  command = plan
+
+  variables {
+    zone_name = "hybzone"
+
+    vnets = {
+      vnetmgmt = {
+        vlan_id     = 10
+        description = "Lab (dev)_1.0 - test"
+
+        subnets = {
+          subnet_name = {
+            cidr    = "10.10.0.0/24"
+            gateway = "10.10.0.1"
+          }
+        }
+      }
+    }
+  }
+}
+
+run "vnet_description_max_length_valid" {
+  command = plan
+
+  variables {
+    zone_name = "hybzone"
+
+    vnets = {
+      vnetmgmt = {
+        vlan_id     = 10
+        description = join("", [for i in range(256) : "a"])
+
+        subnets = {
+          subnet_name = {
+            cidr    = "10.10.0.0/24"
+            gateway = "10.10.0.1"
+          }
+        }
+      }
+    }
+  }
+}
+
+run "vnet_description_unsupported_character_invalid" {
+  command = plan
+
+  variables {
+    zone_name = "hybzone"
+
+    vnets = {
+      vnetmgmt = {
+        vlan_id     = 10
+        description = "Validation/testing network"
+
+        subnets = {
+          subnet_name = {
+            cidr    = "10.10.0.0/24"
+            gateway = "10.10.0.1"
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.vnets]
+}
+
+run "vnet_description_too_long_invalid" {
+  command = plan
+
+  variables {
+    zone_name = "hybzone"
+
+    vnets = {
+      vnetmgmt = {
+        vlan_id     = 10
+        description = join("", [for i in range(257) : "a"])
+
+        subnets = {
+          subnet_name = {
+            cidr    = "10.10.0.0/24"
+            gateway = "10.10.0.1"
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.vnets]
+}
+
+run "vnet_description_empty_invalid" {
+  command = plan
+
+  variables {
+    zone_name = "hybzone"
+
+    vnets = {
+      vnetmgmt = {
+        vlan_id     = 10
+        description = ""
+
+        subnets = {
+          subnet_name = {
+            cidr    = "10.10.0.0/24"
+            gateway = "10.10.0.1"
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.vnets]
+}
