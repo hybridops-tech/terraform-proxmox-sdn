@@ -16,9 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lack the SDN VNet and subnet resources or fail `terraform validate` on the
   subnet CIDR. CI also validates and tests the module against that minimum.
 - VNet descriptions must now satisfy the provider's alias rule: letters,
-  digits, spaces, and `- _ . ( )` only, up to 256 characters. The
-  `homelab-six-vlans` example description "Validation/testing network" was
-  changed to "Validation and testing network" accordingly.
+  digits, spaces, and `- _ . ( )` only, up to 256 characters. The module
+  validates this in `var.vnets`, so an invalid description fails at the
+  module input. The `homelab-six-vlans` example description
+  "Validation/testing network" was changed to "Validation and testing
+  network" accordingly.
 
 ## [0.2.0-beta.1] - 2026-08-26
 
