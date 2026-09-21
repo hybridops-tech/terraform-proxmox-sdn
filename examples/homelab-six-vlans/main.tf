@@ -118,7 +118,7 @@ module "sdn" {
 
     vnetlab = {
       vlan_id     = 50
-      description = "Validation/testing network"
+      description = "Validation and testing network"
       subnets = {
         lab = {
           cidr    = "10.50.0.0/24"
