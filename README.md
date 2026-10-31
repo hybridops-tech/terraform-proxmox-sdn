@@ -342,6 +342,9 @@ against a non-production Proxmox environment before release.
 - [VLAN allocation strategy](https://docs.hybridops.tech/adr/ADR-0101-vlan-allocation-strategy/)
 - [Changelog](CHANGELOG.md)
 - [Roadmap](ROADMAP.md)
+- [Security policy](SECURITY.md)
+- [Governance](GOVERNANCE.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
 - [Issues](https://github.com/hybridops-tech/terraform-proxmox-sdn/issues)
 
 ## Contributing
