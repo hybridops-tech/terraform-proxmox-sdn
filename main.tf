@@ -133,6 +133,28 @@ locals {
       ]), -1)
     }
   }
+
+  invalid_dhcp_inputs = [
+    for key, range in local.dhcp_ranges : key
+    if !(range.cidr_valid && range.gateway_valid && range.range_start_valid && range.range_end_valid)
+  ]
+  invalid_dhcp_membership = [
+    for key, range in local.dhcp_ranges : key
+    if !(
+      range.range_start_network == range.network &&
+      range.range_end_network == range.network &&
+      range.range_start != range.network &&
+      range.range_end != range.broadcast
+    )
+  ]
+  reversed_dhcp_ranges = [
+    for key, range in local.dhcp_ranges : key
+    if range.range_start_number > range.range_end_number
+  ]
+  gateway_dhcp_conflicts = [
+    for key, range in local.dhcp_ranges : key
+    if range.gateway_number >= range.range_start_number && range.gateway_number <= range.range_end_number
+  ]
 }
 
 resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
@@ -172,38 +194,23 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
     }
 
     precondition {
-      condition = alltrue([
-        for range in values(local.dhcp_ranges) :
-        range.cidr_valid && range.gateway_valid && range.range_start_valid && range.range_end_valid
-      ])
-      error_message = "Active DHCP pools require valid IPv4 subnet CIDRs, gateways, and range addresses."
+      condition     = length(local.invalid_dhcp_inputs) == 0
+      error_message = "Active DHCP pools require valid IPv4 subnet CIDRs, gateways, and range addresses: ${join(", ", local.invalid_dhcp_inputs)}."
     }
 
     precondition {
-      condition = alltrue([
-        for range in values(local.dhcp_ranges) :
-        range.range_start_network == range.network &&
-        range.range_end_network == range.network &&
-        range.range_start != range.network &&
-        range.range_end != range.broadcast
-      ])
-      error_message = "Each active DHCP range must contain usable host addresses within its subnet CIDR."
+      condition     = length(local.invalid_dhcp_membership) == 0
+      error_message = "Active DHCP ranges must contain usable host addresses within their subnet CIDR: ${join(", ", local.invalid_dhcp_membership)}."
     }
 
     precondition {
-      condition = alltrue([
-        for range in values(local.dhcp_ranges) :
-        range.range_start_number <= range.range_end_number
-      ])
-      error_message = "Each active DHCP range must start at or before its end address."
+      condition     = length(local.reversed_dhcp_ranges) == 0
+      error_message = "Active DHCP ranges must start at or before their end address: ${join(", ", local.reversed_dhcp_ranges)}."
     }
 
     precondition {
-      condition = alltrue([
-        for range in values(local.dhcp_ranges) :
-        range.gateway_number < range.range_start_number || range.gateway_number > range.range_end_number
-      ])
-      error_message = "An active DHCP range must not include its subnet gateway."
+      condition     = length(local.gateway_dhcp_conflicts) == 0
+      error_message = "Active DHCP ranges must not include their subnet gateway: ${join(", ", local.gateway_dhcp_conflicts)}."
     }
   }
 
