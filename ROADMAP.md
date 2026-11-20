@@ -55,7 +55,6 @@ mode while preserving the 0.1.x single-node input path.
 
 - Improved Proxmox API diagnostics for timeouts, authentication failures, and
   partial SDN state.
-- Configurable host recovery watcher behaviour.
 - Additional IPAM output contract coverage.
 - Small production-style and external-DHCP reference patterns.
 

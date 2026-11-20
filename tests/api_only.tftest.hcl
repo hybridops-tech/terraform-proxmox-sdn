@@ -45,6 +45,11 @@ run "fresh_edge_routed_without_host_login" {
   }
 
   assert {
+    condition     = null_resource.sdn_auto_healing.triggers.recovery_watcher_enabled == "false"
+    error_message = "Fresh edge-routed mode must not install the host recovery watcher."
+  }
+
+  assert {
     condition     = null_resource.sdn_apply_finalizer.triggers.host_orchestration_enabled == "false"
     error_message = "Fresh edge-routed mode must put final cleanup into no-host-login mode."
   }

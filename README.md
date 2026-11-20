@@ -229,6 +229,7 @@ enabled, `proxmox_host` is also required.
 | Name | Type | Default | Description |
 |---|---|---:|---|
 | `enable_host_orchestration` | `bool` | `true` | Enable SSH-based apply, recovery and cleanup hooks. |
+| `enable_host_recovery_watcher` | `bool` | `true` | Reconcile module-managed host SDN state after Proxmox configuration changes. |
 | `enable_host_l3` | `bool` | `true` | Assign gateway addresses to VNet interfaces. |
 | `enable_snat` | `bool` | `true` | Add per-subnet masquerade rules through `uplink_interface`. |
 | `uplink_interface` | `string` | `"vmbr0"` | Host interface used for SNAT. |
@@ -237,6 +238,9 @@ enabled, `proxmox_host` is also required.
 
 When `enable_host_orchestration = false`, also disable host L3, SNAT and DHCP,
 and leave `host_static_routes` empty.
+
+Set `enable_host_recovery_watcher = false` to keep host gateway, route, SNAT,
+and DHCP orchestration without installing the recovery systemd units.
 
 ### DHCP and IPAM output
 

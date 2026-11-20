@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `enable_host_recovery_watcher` controls installation of the module-managed
+  systemd recovery watcher while preserving its existing enabled default.
+
 ### Fixed
 - VNet `description` values are now applied as the Proxmox VNet alias. The
   input was required but its value was previously discarded.

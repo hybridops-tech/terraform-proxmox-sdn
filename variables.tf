@@ -53,6 +53,12 @@ variable "enable_host_orchestration" {
   default     = true
 }
 
+variable "enable_host_recovery_watcher" {
+  description = "Install the module-managed systemd watcher that reconciles host SDN state after Proxmox configuration changes."
+  type        = bool
+  default     = true
+}
+
 variable "enable_host_l3" {
   description = "Enable host-level L3 gateway configuration on VNet interfaces."
   type        = bool
