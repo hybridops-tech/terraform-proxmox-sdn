@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The minimum `bpg/proxmox` version is now `0.85.0`. Earlier releases either
+  lack the SDN VNet and subnet resources or fail `terraform validate` on the
+  subnet CIDR. CI also validates and tests the module against that minimum.
+
 ## [0.2.0-beta.1] - 2026-08-26
 
 ### Added
