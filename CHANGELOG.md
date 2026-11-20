@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - VNet `description` values are now applied as the Proxmox VNet alias. The
   input was required but its value was previously discarded.
+- Repeated `host_static_routes` destination CIDRs are now rejected at plan
+  time instead of allowing one next hop to replace another.
 
 ### Changed
 - The minimum `bpg/proxmox` version is now `0.85.0`. Earlier releases either

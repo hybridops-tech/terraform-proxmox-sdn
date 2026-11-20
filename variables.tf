@@ -124,6 +124,13 @@ variable "host_static_routes" {
     condition     = !(length(var.host_static_routes) > 0 && !var.enable_host_l3)
     error_message = "host_static_routes requires enable_host_l3 = true because the Proxmox host must own the gateway role."
   }
+
+  validation {
+    condition = length(distinct([
+      for route in var.host_static_routes : trimspace(route.destination_cidr)
+    ])) == length(var.host_static_routes)
+    error_message = "host_static_routes must list each destination_cidr only once. The host installs routes with ip route replace, so a second next hop for the same destination would replace the first."
+  }
 }
 
 variable "vnets" {
