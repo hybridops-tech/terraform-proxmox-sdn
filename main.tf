@@ -3,9 +3,12 @@
 
 locals {
   host_orchestration_enabled = var.enable_host_orchestration
-  host_l3_enabled            = var.enable_host_orchestration && var.enable_host_l3
-  snat_enabled               = var.enable_host_orchestration && var.enable_host_l3 && var.enable_snat
-  dhcp_enabled               = var.enable_host_orchestration && var.enable_host_l3 && var.enable_dhcp
+  host_recovery_watcher_enabled = (
+    var.enable_host_orchestration && var.enable_host_recovery_watcher
+  )
+  host_l3_enabled = var.enable_host_orchestration && var.enable_host_l3
+  snat_enabled    = var.enable_host_orchestration && var.enable_host_l3 && var.enable_snat
+  dhcp_enabled    = var.enable_host_orchestration && var.enable_host_l3 && var.enable_dhcp
 
   proxmox_nodes_effective = length(var.proxmox_nodes) > 0 ? [
     for node in var.proxmox_nodes : trimspace(node)
@@ -609,6 +612,7 @@ resource "null_resource" "sdn_reload" {
 resource "null_resource" "sdn_auto_healing" {
   triggers = {
     host_orchestration_enabled = tostring(local.host_orchestration_enabled)
+    recovery_watcher_enabled   = tostring(local.host_recovery_watcher_enabled)
     proxmox_host               = var.proxmox_host
     sdn_reload_hash            = local.sdn_reload_hash
     installer_hash             = filemd5("${path.module}/scripts/setup/install-sdn-auto-healing.sh")
@@ -624,8 +628,8 @@ resource "null_resource" "sdn_auto_healing" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      if [ "${self.triggers.host_orchestration_enabled}" != "true" ]; then
-        echo "Host orchestration disabled; skipping host recovery setup."
+      if [ "${self.triggers.recovery_watcher_enabled}" != "true" ]; then
+        echo "Host recovery watcher disabled; skipping setup."
         exit 0
       fi
 
@@ -637,7 +641,7 @@ resource "null_resource" "sdn_auto_healing" {
   provisioner "local-exec" {
     when    = destroy
     command = <<-EOT
-      if [ "${self.triggers.host_orchestration_enabled}" != "true" ]; then
+      if [ "${try(self.triggers.recovery_watcher_enabled, self.triggers.host_orchestration_enabled)}" != "true" ]; then
         exit 0
       fi
 
