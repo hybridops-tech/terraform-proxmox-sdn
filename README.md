@@ -175,7 +175,9 @@ module "sdn" {
 
 When module-level DHCP is enabled, DHCP is enabled for each subnet unless that
 subnet sets `dhcp_enabled = false`. Missing ranges and DNS values are derived
-from the module defaults.
+from the module defaults. Each active pool must use valid host addresses within
+its subnet, start at or before its end address, and exclude the gateway. Keep
+gateway and statically assigned addresses outside the declared pool.
 
 ## VNet schema
 

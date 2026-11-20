@@ -79,6 +79,82 @@ locals {
     for key, s in local.subnets_flat : key => s
     if s.dhcp_enabled_effective
   } : {}
+
+  dhcp_ranges = {
+    for key, subnet in local.dhcp_subnets : key => {
+      cidr        = subnet.cidr
+      gateway     = subnet.gateway
+      range_start = subnet.dhcp_range_start_effective
+      range_end   = subnet.dhcp_range_end_effective
+
+      cidr_valid = try(
+        can(cidrhost(subnet.cidr, 0)) &&
+        length(split(".", split("/", subnet.cidr)[0])) == 4,
+        false,
+      )
+      gateway_valid = try(
+        can(cidrhost("${subnet.gateway}/32", 0)) &&
+        length(split(".", subnet.gateway)) == 4,
+        false,
+      )
+      range_start_valid = try(
+        can(cidrhost("${subnet.dhcp_range_start_effective}/32", 0)) &&
+        length(split(".", subnet.dhcp_range_start_effective)) == 4,
+        false,
+      )
+      range_end_valid = try(
+        can(cidrhost("${subnet.dhcp_range_end_effective}/32", 0)) &&
+        length(split(".", subnet.dhcp_range_end_effective)) == 4,
+        false,
+      )
+
+      network   = try(cidrhost(subnet.cidr, 0), null)
+      broadcast = try(cidrhost(subnet.cidr, -1), null)
+      range_start_network = try(
+        cidrhost("${subnet.dhcp_range_start_effective}/${split("/", subnet.cidr)[1]}", 0),
+        null,
+      )
+      range_end_network = try(
+        cidrhost("${subnet.dhcp_range_end_effective}/${split("/", subnet.cidr)[1]}", 0),
+        null,
+      )
+
+      gateway_number = try(sum([
+        for index, octet in split(".", subnet.gateway) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+      range_start_number = try(sum([
+        for index, octet in split(".", subnet.dhcp_range_start_effective) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+      range_end_number = try(sum([
+        for index, octet in split(".", subnet.dhcp_range_end_effective) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+    }
+  }
+
+  invalid_dhcp_inputs = [
+    for key, range in local.dhcp_ranges : key
+    if !(range.cidr_valid && range.gateway_valid && range.range_start_valid && range.range_end_valid)
+  ]
+  invalid_dhcp_membership = [
+    for key, range in local.dhcp_ranges : key
+    if !(
+      range.range_start_network == range.network &&
+      range.range_end_network == range.network &&
+      range.range_start != range.network &&
+      range.range_end != range.broadcast
+    )
+  ]
+  reversed_dhcp_ranges = [
+    for key, range in local.dhcp_ranges : key
+    if range.range_start_number > range.range_end_number
+  ]
+  gateway_dhcp_conflicts = [
+    for key, range in local.dhcp_ranges : key
+    if range.gateway_number >= range.range_start_number && range.gateway_number <= range.range_end_number
+  ]
 }
 
 resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
@@ -115,6 +191,26 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
     precondition {
       condition     = !var.enable_snat || var.enable_host_l3
       error_message = "enable_snat = true requires enable_host_l3 = true: SNAT is configured on the host-level L3 gateway, so it has no effective path when host L3 is disabled. Set enable_host_l3 = true to keep SNAT, or set enable_snat = false for an edge-routed (API-only) deployment."
+    }
+
+    precondition {
+      condition     = length(local.invalid_dhcp_inputs) == 0
+      error_message = "Active DHCP pools require valid IPv4 subnet CIDRs, gateways, and range addresses: ${join(", ", local.invalid_dhcp_inputs)}."
+    }
+
+    precondition {
+      condition     = length(local.invalid_dhcp_membership) == 0
+      error_message = "Active DHCP ranges must contain usable host addresses within their subnet CIDR: ${join(", ", local.invalid_dhcp_membership)}."
+    }
+
+    precondition {
+      condition     = length(local.reversed_dhcp_ranges) == 0
+      error_message = "Active DHCP ranges must start at or before their end address: ${join(", ", local.reversed_dhcp_ranges)}."
+    }
+
+    precondition {
+      condition     = length(local.gateway_dhcp_conflicts) == 0
+      error_message = "Active DHCP ranges must not include their subnet gateway: ${join(", ", local.gateway_dhcp_conflicts)}."
     }
   }
 

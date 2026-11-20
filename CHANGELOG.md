@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   input was required but its value was previously discarded.
 - Repeated `host_static_routes` destination CIDRs are now rejected at plan
   time instead of allowing one next hop to replace another.
+- Active DHCP pools now fail at plan time when their addresses fall outside
+  the subnet, their bounds are reversed, or they include the gateway.
 
 ### Changed
 - The minimum `bpg/proxmox` version is now `0.85.0`. Earlier releases either
