@@ -79,6 +79,60 @@ locals {
     for key, s in local.subnets_flat : key => s
     if s.dhcp_enabled_effective
   } : {}
+
+  dhcp_ranges = {
+    for key, subnet in local.dhcp_subnets : key => {
+      cidr        = subnet.cidr
+      gateway     = subnet.gateway
+      range_start = subnet.dhcp_range_start_effective
+      range_end   = subnet.dhcp_range_end_effective
+
+      cidr_valid = try(
+        can(cidrhost(subnet.cidr, 0)) &&
+        length(split(".", split("/", subnet.cidr)[0])) == 4,
+        false,
+      )
+      gateway_valid = try(
+        can(cidrhost("${subnet.gateway}/32", 0)) &&
+        length(split(".", subnet.gateway)) == 4,
+        false,
+      )
+      range_start_valid = try(
+        can(cidrhost("${subnet.dhcp_range_start_effective}/32", 0)) &&
+        length(split(".", subnet.dhcp_range_start_effective)) == 4,
+        false,
+      )
+      range_end_valid = try(
+        can(cidrhost("${subnet.dhcp_range_end_effective}/32", 0)) &&
+        length(split(".", subnet.dhcp_range_end_effective)) == 4,
+        false,
+      )
+
+      network   = try(cidrhost(subnet.cidr, 0), null)
+      broadcast = try(cidrhost(subnet.cidr, -1), null)
+      range_start_network = try(
+        cidrhost("${subnet.dhcp_range_start_effective}/${split("/", subnet.cidr)[1]}", 0),
+        null,
+      )
+      range_end_network = try(
+        cidrhost("${subnet.dhcp_range_end_effective}/${split("/", subnet.cidr)[1]}", 0),
+        null,
+      )
+
+      gateway_number = try(sum([
+        for index, octet in split(".", subnet.gateway) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+      range_start_number = try(sum([
+        for index, octet in split(".", subnet.dhcp_range_start_effective) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+      range_end_number = try(sum([
+        for index, octet in split(".", subnet.dhcp_range_end_effective) :
+        tonumber(octet) * pow(256, 3 - index)
+      ]), -1)
+    }
+  }
 }
 
 resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
@@ -115,6 +169,41 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
     precondition {
       condition     = !var.enable_snat || var.enable_host_l3
       error_message = "enable_snat = true requires enable_host_l3 = true: SNAT is configured on the host-level L3 gateway, so it has no effective path when host L3 is disabled. Set enable_host_l3 = true to keep SNAT, or set enable_snat = false for an edge-routed (API-only) deployment."
+    }
+
+    precondition {
+      condition = alltrue([
+        for range in values(local.dhcp_ranges) :
+        range.cidr_valid && range.gateway_valid && range.range_start_valid && range.range_end_valid
+      ])
+      error_message = "Active DHCP pools require valid IPv4 subnet CIDRs, gateways, and range addresses."
+    }
+
+    precondition {
+      condition = alltrue([
+        for range in values(local.dhcp_ranges) :
+        range.range_start_network == range.network &&
+        range.range_end_network == range.network &&
+        range.range_start != range.network &&
+        range.range_end != range.broadcast
+      ])
+      error_message = "Each active DHCP range must contain usable host addresses within its subnet CIDR."
+    }
+
+    precondition {
+      condition = alltrue([
+        for range in values(local.dhcp_ranges) :
+        range.range_start_number <= range.range_end_number
+      ])
+      error_message = "Each active DHCP range must start at or before its end address."
+    }
+
+    precondition {
+      condition = alltrue([
+        for range in values(local.dhcp_ranges) :
+        range.gateway_number < range.range_start_number || range.gateway_number > range.range_end_number
+      ])
+      error_message = "An active DHCP range must not include its subnet gateway."
     }
   }
 
