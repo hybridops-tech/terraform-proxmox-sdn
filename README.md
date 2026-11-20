@@ -90,7 +90,7 @@ provider "proxmox" {
 
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "~> 0.1.6"
+  version = "0.2.0-beta.1"
 
   zone_name    = "apionly"
   proxmox_node = "pve1"
