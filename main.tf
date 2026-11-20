@@ -124,9 +124,10 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
 resource "proxmox_virtual_environment_sdn_vnet" "vnet" {
   for_each = var.vnets
 
-  id   = each.key
-  zone = proxmox_virtual_environment_sdn_zone_vlan.zone.id
-  tag  = each.value.vlan_id
+  id    = each.key
+  zone  = proxmox_virtual_environment_sdn_zone_vlan.zone.id
+  tag   = each.value.vlan_id
+  alias = each.value.description
 
   depends_on = [
     null_resource.sdn_apply_finalizer,

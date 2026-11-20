@@ -134,7 +134,7 @@ variable "vnets" {
 
     Each VNet:
       - vlan_id: VLAN tag (e.g. 10, 20, 30)
-      - description: logical description
+      - description: logical description, applied as the Proxmox VNet alias (letters, digits, spaces and - _ . ( ) only, up to 256 characters)
       - subnets: map keyed by subnet ID (e.g. submgmt, subdev)
 
     Each subnet:
@@ -178,6 +178,14 @@ variable "vnets" {
       vnet.vlan_id == floor(vnet.vlan_id)
     ])
     error_message = "Each VLAN ID must be a whole number between 1 and 4094."
+  }
+  validation {
+    condition = alltrue([
+      for vnet in values(var.vnets) :
+      can(regex("^[()._a-zA-Z0-9\\s-]+$", vnet.description)) &&
+      length(vnet.description) <= 256
+    ])
+    error_message = "Each VNet description is applied as the Proxmox VNet alias, so it must be 1-256 characters and contain only letters, digits, spaces, and - _ . ( )."
   }
 
 }
