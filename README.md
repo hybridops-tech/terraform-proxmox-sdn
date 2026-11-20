@@ -55,7 +55,7 @@ Host-side features are intentionally limited to one Proxmox node. A
 - Terraform `>= 1.5.0`.
 - Proxmox VE 8.x with SDN enabled.
 - A VLAN-aware bridge, normally `vmbr0`.
-- `bpg/proxmox >= 0.50.0` and `hashicorp/null >= 3.2.0`.
+- `bpg/proxmox >= 0.85.0` and `hashicorp/null >= 3.2.0`.
 - A dedicated Proxmox API token with access to the managed SDN objects.
 
 Host-routed mode also requires:
@@ -77,7 +77,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = ">= 0.50.0"
+      version = ">= 0.85.0"
     }
   }
 }

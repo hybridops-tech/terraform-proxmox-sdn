@@ -52,6 +52,44 @@ jobs:
       - name: Test module
         run: terraform test -no-color
 
+  validate-module-min-provider:
+    name: validate module (minimum bpg/proxmox)
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.13.4"
+
+      - name: Pin the minimum bpg/proxmox version from versions.tf
+        run: |
+          min="$(grep -A1 'source  = "bpg/proxmox"' versions.tf | sed -n 's/.*">= \([0-9.]*\)".*/\1/p')"
+          test -n "$min"
+          echo "Testing against bpg/proxmox $min"
+          cat > min_provider_override.tf <<EOF
+          terraform {
+            required_providers {
+              proxmox = {
+                source  = "bpg/proxmox"
+                version = "= $min"
+              }
+            }
+          }
+          EOF
+
+      - name: Init module
+        run: terraform init -backend=false -input=false
+
+      - name: Validate module
+        run: terraform validate -no-color
+
+      - name: Test module
+        run: terraform test -no-color
+
   validate-examples:
     name: validate example (${{ matrix.name }})
     runs-on: ubuntu-latest
