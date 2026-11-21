@@ -12,8 +12,8 @@
 <p align="center">
   <a href="https://registry.terraform.io/modules/hybridops-tech/sdn/proxmox/latest">Terraform Registry</a> ·
   <a href="https://docs.hybridops.tech/howto/networking/HOWTO-proxmox-sdn-terraform/">Documentation</a> ·
-  <a href="examples">Examples</a> ·
-  <a href="ROADMAP.md">Roadmap</a>
+  <a href="https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples">Examples</a> ·
+  <a href="https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/ROADMAP.md">Roadmap</a>
 </p>
 
 A purpose-built Terraform module for Proxmox VE SDN. It keeps the operating boundary explicit: use the Proxmox API for zone, VNet and subnet objects, then opt into host orchestration when the selected node should also provide gateway, routing, SNAT or DHCP services.
@@ -97,7 +97,7 @@ provider "proxmox" {
 
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "0.2.0"
+  version = "0.2.1"
 
   zone_name    = "apionly"
   proxmox_node = "pve1"
@@ -325,13 +325,13 @@ interfaces may remain visible until SDN networking is reloaded.
 
 | Example | Purpose |
 |---|---|
-| [`api-only-edge-routed`](examples/api-only-edge-routed) | API-only zone with routing owned externally. |
-| [`basic`](examples/basic) | Single VNet with host L3, SNAT and DHCP. |
-| [`no-dhcp`](examples/no-dhcp) | Host L3 and SNAT with static guest addressing. |
-| [`homelab-six-vlans`](examples/homelab-six-vlans) | Six-VLAN segmented reference layout. |
-| [`multi-node`](examples/multi-node) | Shared edge-routed zone across cluster nodes. |
+| [`api-only-edge-routed`](https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples/api-only-edge-routed) | API-only zone with routing owned externally. |
+| [`basic`](https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples/basic) | Single VNet with host L3, SNAT and DHCP. |
+| [`no-dhcp`](https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples/no-dhcp) | Host L3 and SNAT with static guest addressing. |
+| [`homelab-six-vlans`](https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples/homelab-six-vlans) | Six-VLAN segmented reference layout. |
+| [`multi-node`](https://github.com/hybridops-tech/terraform-proxmox-sdn/tree/main/examples/multi-node) | Shared edge-routed zone across cluster nodes. |
 
-See the [examples index](examples/README.md) for variables and validation
+See the [examples index](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/examples/README.md) for variables and validation
 instructions.
 
 ## Validation
@@ -353,20 +353,20 @@ against a non-production Proxmox environment before release.
 - [Proxmox SDN with Terraform](https://docs.hybridops.tech/howto/networking/HOWTO-proxmox-sdn-terraform/)
 - [Network architecture](https://docs.hybridops.tech/guides/getting-started/20-network-architecture/)
 - [VLAN allocation strategy](https://docs.hybridops.tech/adr/ADR-0101-vlan-allocation-strategy/)
-- [Changelog](CHANGELOG.md)
-- [Roadmap](ROADMAP.md)
-- [Security policy](SECURITY.md)
-- [Governance](GOVERNANCE.md)
-- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Changelog](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/CHANGELOG.md)
+- [Roadmap](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/ROADMAP.md)
+- [Security policy](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/SECURITY.md)
+- [Governance](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/GOVERNANCE.md)
+- [Code of conduct](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/CODE_OF_CONDUCT.md)
 - [Issues](https://github.com/hybridops-tech/terraform-proxmox-sdn/issues)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
+See [CONTRIBUTING.md](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/CONTRIBUTING.md) for the development workflow and
 required validation. User-visible changes should include an appropriate
 changelog entry and updated examples where relevant.
 
 ## License
 
-Code is licensed under [MIT-0](LICENSE). Documentation is licensed under
+Code is licensed under [MIT-0](https://github.com/hybridops-tech/terraform-proxmox-sdn/blob/main/LICENSE). Documentation is licensed under
 [CC BY 4.0](https://docs.hybridops.tech/legal/documentation-license/).
