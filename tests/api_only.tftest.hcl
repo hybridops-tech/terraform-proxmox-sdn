@@ -72,7 +72,7 @@ run "host_managed_default_still_requires_host" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
@@ -88,6 +88,6 @@ run "host_features_rejected_when_host_login_disabled" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }

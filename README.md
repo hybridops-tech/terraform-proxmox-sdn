@@ -52,10 +52,10 @@ Host-side features are intentionally limited to one Proxmox node. A
 
 ## Requirements
 
-- Terraform `>= 1.5.0`.
+- Terraform `>= 1.8.0`.
 - Proxmox VE 8.x with SDN enabled.
 - A VLAN-aware bridge, normally `vmbr0`.
-- `bpg/proxmox >= 0.85.0` and `hashicorp/null >= 3.2.0`.
+- `bpg/proxmox >= 0.100.0, < 1.0.0` and `hashicorp/null >= 3.2.0`.
 - A dedicated Proxmox API token with access to the managed SDN objects.
 
 Host-routed mode also requires:
@@ -63,6 +63,13 @@ Host-routed mode also requires:
 - `ssh` and `scp` on the Terraform runner;
 - non-interactive root SSH access to `proxmox_host`; and
 - dnsmasq on the Proxmox node when DHCP is enabled.
+
+### Upgrade from 0.1.x or 0.2.0 beta
+
+Upgrade Terraform and the Proxmox provider to the supported versions, run
+`terraform init -upgrade`, then review `terraform plan`. The included moved
+blocks transfer existing SDN state to the current provider resource names
+without replacing the managed Proxmox objects.
 
 ## Quick start
 
@@ -72,12 +79,12 @@ router must provide the actual gateway and related services.
 
 ```hcl
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.8.0"
 
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = ">= 0.85.0"
+      version = ">= 0.100.0, < 1.0.0"
     }
   }
 }
@@ -90,7 +97,7 @@ provider "proxmox" {
 
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "0.2.0-beta.1"
+  version = "0.2.0"
 
   zone_name    = "apionly"
   proxmox_node = "pve1"
@@ -140,7 +147,7 @@ subnet. SNAT, DHCP and static routes remain independently configurable.
 ```hcl
 module "sdn" {
   source  = "hybridops-tech/sdn/proxmox"
-  version = "~> 0.1.6"
+  version = "~> 0.2.0"
 
   zone_name    = "hybzone"
   proxmox_node = "pve1"

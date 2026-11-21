@@ -33,7 +33,7 @@ orchestration.
 The 0.2.x line adds cluster-aware SDN membership and an API-only operating
 mode while preserving the 0.1.x single-node input path.
 
-### Delivered in 0.2.0-beta.1
+### Delivered in 0.2.0
 
 - Optional cluster-wide node membership through `proxmox_nodes`.
 - API-only edge-routed deployments that do not require Proxmox host login.
@@ -42,19 +42,16 @@ mode while preserving the 0.1.x single-node input path.
 - CI validation for the root module, every example, and host-side shell scripts.
 - Supported `multi-node` and `api-only-edge-routed` examples.
 - Brownfield ownership, import, access, and local validation guidance.
-
-### Before 0.2.0 stable
-
-- Validate API-only and multi-node apply/destroy lifecycles against live Proxmox
-  environments.
-- Migrate deprecated `bpg/proxmox` SDN resource names before provider 1.0.
-- Complete high-value validation for incompatible host flags and DHCP ranges.
-- Resolve release-blocking findings from beta feedback.
+- Current `proxmox_sdn_*` resource names with state-preserving moved blocks.
+- Plan-time validation for incompatible host flags, duplicate routes, VNet
+  aliases, and active DHCP ranges.
+- Optional host recovery watcher lifecycle.
 
 ### Planned for later 0.2.x
 
 - Improved Proxmox API diagnostics for timeouts, authentication failures, and
   partial SDN state.
+- Additional live multi-node apply and destroy coverage.
 - Additional IPAM output contract coverage.
 - Small production-style and external-DHCP reference patterns.
 

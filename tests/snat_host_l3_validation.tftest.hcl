@@ -43,7 +43,7 @@ run "snat_without_host_l3_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 

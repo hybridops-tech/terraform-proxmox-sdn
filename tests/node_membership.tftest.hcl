@@ -34,7 +34,7 @@ run "legacy_single_node_input" {
   }
 
   assert {
-    condition     = toset(proxmox_virtual_environment_sdn_zone_vlan.zone.nodes) == toset(["pve1"])
+    condition     = toset(proxmox_sdn_zone_vlan.zone.nodes) == toset(["pve1"])
     error_message = "The legacy proxmox_node input must remain the effective zone membership."
   }
 }
@@ -49,7 +49,7 @@ run "cluster_node_membership" {
   }
 
   assert {
-    condition     = toset(proxmox_virtual_environment_sdn_zone_vlan.zone.nodes) == toset(["pve1", "pve2", "pve3"])
+    condition     = toset(proxmox_sdn_zone_vlan.zone.nodes) == toset(["pve1", "pve2", "pve3"])
     error_message = "proxmox_nodes must take precedence and assign every listed node to the SDN zone."
   }
 }
@@ -64,7 +64,7 @@ run "empty_effective_node_list_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
@@ -77,6 +77,6 @@ run "multi_node_host_l3_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }

@@ -2,13 +2,12 @@
 
 ## Supported versions
 
-Security fixes are applied to the latest stable release. The current beta line
-is reviewed on a best-effort basis while it remains under active development.
+Security fixes are applied to the latest stable release.
 
 | Version | Support |
 | --- | --- |
-| `0.1.x` latest release | Supported |
-| `0.2.0-beta.x` latest prerelease | Best effort |
+| `0.2.x` latest release | Supported |
+| `0.1.x` | Not supported |
 | Earlier releases | Not supported |
 
 ## Reporting a vulnerability

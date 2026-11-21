@@ -160,7 +160,7 @@ locals {
   ]
 }
 
-resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
+resource "proxmox_sdn_zone_vlan" "zone" {
   id     = var.zone_name
   bridge = var.zone_bridge
   nodes  = local.proxmox_nodes_effective
@@ -220,39 +220,39 @@ resource "proxmox_virtual_environment_sdn_zone_vlan" "zone" {
   depends_on = [null_resource.sdn_apply_finalizer]
 }
 
-resource "proxmox_virtual_environment_sdn_vnet" "vnet" {
+resource "proxmox_sdn_vnet" "vnet" {
   for_each = var.vnets
 
   id    = each.key
-  zone  = proxmox_virtual_environment_sdn_zone_vlan.zone.id
+  zone  = proxmox_sdn_zone_vlan.zone.id
   tag   = each.value.vlan_id
   alias = each.value.description
 
   depends_on = [
     null_resource.sdn_apply_finalizer,
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
-resource "proxmox_virtual_environment_sdn_subnet" "subnet" {
+resource "proxmox_sdn_subnet" "subnet" {
   for_each = local.subnets_flat
 
-  vnet    = proxmox_virtual_environment_sdn_vnet.vnet[each.value.vnet_id].id
+  vnet    = proxmox_sdn_vnet.vnet[each.value.vnet_id].id
   cidr    = each.value.cidr
   gateway = each.value.gateway
 
   depends_on = [
     null_resource.sdn_apply_finalizer,
-    proxmox_virtual_environment_sdn_vnet.vnet,
+    proxmox_sdn_vnet.vnet,
   ]
 }
 
-resource "proxmox_virtual_environment_sdn_applier" "apply" {
+resource "proxmox_sdn_applier" "apply" {
   depends_on = [
     null_resource.sdn_apply_finalizer,
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
-    proxmox_virtual_environment_sdn_vnet.vnet,
-    proxmox_virtual_environment_sdn_subnet.subnet,
+    proxmox_sdn_zone_vlan.zone,
+    proxmox_sdn_vnet.vnet,
+    proxmox_sdn_subnet.subnet,
   ]
 }
 
@@ -325,7 +325,7 @@ resource "null_resource" "gateway_cleanup" {
 
   depends_on = [
     null_resource.gateway_setup,
-    proxmox_virtual_environment_sdn_applier.apply,
+    proxmox_sdn_applier.apply,
   ]
 }
 
@@ -393,7 +393,7 @@ resource "null_resource" "host_route_cleanup" {
 
   depends_on = [
     null_resource.host_route_setup,
-    proxmox_virtual_environment_sdn_applier.apply,
+    proxmox_sdn_applier.apply,
   ]
 }
 
@@ -467,7 +467,7 @@ resource "null_resource" "nat_cleanup" {
 
   depends_on = [
     null_resource.nat_setup,
-    proxmox_virtual_environment_sdn_applier.apply,
+    proxmox_sdn_applier.apply,
   ]
 }
 
@@ -548,7 +548,7 @@ resource "null_resource" "dhcp_cleanup" {
 
   depends_on = [
     null_resource.dhcp_setup,
-    proxmox_virtual_environment_sdn_applier.apply,
+    proxmox_sdn_applier.apply,
   ]
 }
 
@@ -605,7 +605,7 @@ resource "null_resource" "sdn_reload" {
   }
 
   depends_on = [
-    proxmox_virtual_environment_sdn_applier.apply,
+    proxmox_sdn_applier.apply,
   ]
 }
 

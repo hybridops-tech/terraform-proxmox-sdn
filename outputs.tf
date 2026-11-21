@@ -3,13 +3,13 @@
 
 output "zone_name" {
   description = "SDN zone name."
-  value       = proxmox_virtual_environment_sdn_zone_vlan.zone.id
+  value       = proxmox_sdn_zone_vlan.zone.id
 }
 
 output "vnets" {
   description = "Created SDN VNets."
   value = {
-    for k, v in proxmox_virtual_environment_sdn_vnet.vnet : k => {
+    for k, v in proxmox_sdn_vnet.vnet : k => {
       id      = v.id
       zone    = v.zone
       vlan_id = v.tag
@@ -20,7 +20,7 @@ output "vnets" {
 output "subnets" {
   description = "Created SDN subnets with DHCP configuration (effective values)."
   value = {
-    for key, subnet in proxmox_virtual_environment_sdn_subnet.subnet : key => {
+    for key, subnet in proxmox_sdn_subnet.subnet : key => {
       id      = subnet.id
       vnet    = subnet.vnet
       cidr    = subnet.cidr
