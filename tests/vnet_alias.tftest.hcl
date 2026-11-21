@@ -41,12 +41,12 @@ run "vnet_description_is_applied_as_alias" {
   command = plan
 
   assert {
-    condition     = proxmox_virtual_environment_sdn_vnet.vnet["vmgmt"].alias == "Management network"
+    condition     = proxmox_sdn_vnet.vnet["vmgmt"].alias == "Management network"
     error_message = "The description of the vmgmt VNet must be applied as the Proxmox VNet alias."
   }
 
   assert {
-    condition     = proxmox_virtual_environment_sdn_vnet.vnet["vdev"].alias == "Development network"
+    condition     = proxmox_sdn_vnet.vnet["vdev"].alias == "Development network"
     error_message = "The description of the vdev VNet must be applied as the Proxmox VNet alias."
   }
 }

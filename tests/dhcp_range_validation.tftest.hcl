@@ -61,7 +61,7 @@ run "start_outside_subnet_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
@@ -86,7 +86,7 @@ run "end_outside_subnet_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
@@ -111,7 +111,7 @@ run "reversed_range_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 
@@ -136,7 +136,7 @@ run "gateway_in_range_rejected" {
   }
 
   expect_failures = [
-    proxmox_virtual_environment_sdn_zone_vlan.zone,
+    proxmox_sdn_zone_vlan.zone,
   ]
 }
 

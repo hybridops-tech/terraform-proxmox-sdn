@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
 ### Added
+- API-only edge-routed deployments that manage Proxmox SDN objects without
+  logging in to the Proxmox host.
+- Optional cluster-wide SDN membership through `proxmox_nodes`.
+- Native Terraform tests for operating modes, node membership, validation,
+  and host-side lifecycle controls.
 - `enable_host_recovery_watcher` controls installation of the module-managed
   systemd recovery watcher while preserving its existing enabled default.
 
@@ -20,9 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the subnet, their bounds are reversed, or they include the gateway.
 
 ### Changed
-- The minimum `bpg/proxmox` version is now `0.85.0`. Earlier releases either
-  lack the SDN VNet and subnet resources or fail `terraform validate` on the
-  subnet CIDR. CI also validates and tests the module against that minimum.
+- SDN resources now use the provider's current `proxmox_sdn_*` names. Moved
+  blocks preserve existing state addresses during upgrade.
+- Terraform 1.8 or later and `bpg/proxmox >= 0.100.0, < 1.0.0` are required.
+  CI validates and tests the module against the minimum supported provider.
 - VNet descriptions must now satisfy the provider's alias rule: letters,
   digits, spaces, and `- _ . ( )` only, up to 256 characters. The module
   validates this in `var.vnets`, so an invalid description fails at the
