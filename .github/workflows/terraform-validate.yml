@@ -67,7 +67,7 @@ jobs:
 
       - name: Pin the minimum bpg/proxmox version from versions.tf
         run: |
-          min="$(grep -A1 'source  = "bpg/proxmox"' versions.tf | sed -n 's/.*">= \([0-9.]*\)".*/\1/p')"
+          min="$(grep -A1 'source  = "bpg/proxmox"' versions.tf | sed -n 's/.*">= \([0-9.]*\).*/\1/p')"
           test -n "$min"
           echo "Testing against bpg/proxmox $min"
           cat > min_provider_override.tf <<EOF
