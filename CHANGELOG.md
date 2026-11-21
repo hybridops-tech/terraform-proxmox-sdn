@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-21
+
+### Fixed
+- Repository links in the Terraform Registry README now resolve to their
+  GitHub source pages.
+
 ## [0.2.0] - 2026-11-21
 
 ### Added
